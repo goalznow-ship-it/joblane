@@ -1,0 +1,17 @@
+# Celery and worker dependencies
+celery==5.4.0
+redis==5.2.0
+
+# Same core dependencies as API
+fastapi==0.115.12
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+python-dotenv==1.0.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+boto3==1.35.9
+minio==7.2.7
+structlog==24.4.0
+python-json-logger==2.0.7
+python-dateutil==2.9.0
+pytz==2024.2
