@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db, dispose_db
 from app.auth.router import router as auth_router, account_router
+from app.admin.router import router as admin_router
+from app.health import router as health_router
 
 app = FastAPI(title=settings.app_name, debug=settings.app_debug)
 
@@ -29,3 +31,5 @@ async def shutdown_event():
 
 app.include_router(auth_router)
 app.include_router(account_router)
+app.include_router(admin_router)
+app.include_router(health_router)

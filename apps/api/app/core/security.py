@@ -1,22 +1,9 @@
-from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 from app.core.config import settings
+from app.auth.security import verify_password, get_password_hash
 import secrets
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against the stored hash."""
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password: str) -> str:
-    """Generate a hashed password."""
-    return pwd_context.hash(password, rounds=settings.bcrypt_rounds)
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:

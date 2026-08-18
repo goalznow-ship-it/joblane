@@ -13,9 +13,15 @@ All models use UUID primary keys and are designed for production-grade security.
 from sqlalchemy import Column, String, Boolean, DateTime, Text, Enum, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from apps.api.app.core.database import Base
+from app.core.database import Base
 import enum
 import uuid
+from datetime import datetime, timezone
+
+
+def utcnow():
+    return datetime.now(timezone.utc)
+
 
 
 class UserStatus(enum.Enum):
@@ -40,12 +46,14 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     email_normalized = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    status = Column(Enum(UserStatus), default=UserStatus.PENDING_VERIFICATION, nullable=False)
+    full_name = Column(String(255))
+    role = Column(String(30), default="USER", nullable=False, index=True)
+    status = Column(Enum(UserStatus, name="user_status"), default=UserStatus.PENDING_VERIFICATION, nullable=False)
     email_verified_at = Column(DateTime(timezone=True))
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), onupdate=utcnow, nullable=False)
     last_login_at = Column(DateTime(timezone=True))
     deleted_at = Column(DateTime(timezone=True))
     
@@ -76,8 +84,8 @@ class UserSession(Base):
     token_hash = Column(String(255), nullable=False, index=True)  # SHA256 hash of session token
     
     # Session metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    last_seen_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked_at = Column(DateTime(timezone=True))
     
@@ -109,7 +117,7 @@ class EmailVerificationToken(Base):
     token_hash = Column(String(255), nullable=False, index=True)  # SHA256 hash of verification token
     
     # Token lifecycle
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True))
     
@@ -138,7 +146,7 @@ class PasswordResetToken(Base):
     token_hash = Column(String(255), nullable=False, index=True)  # SHA256 hash of reset token
     
     # Token lifecycle
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True))
     

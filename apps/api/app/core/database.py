@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import text
 import logging
 from typing import AsyncGenerator
-from apps.api.app.core.config import settings
+from app.core.config import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
