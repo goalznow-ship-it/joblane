@@ -2,8 +2,8 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
@@ -49,6 +49,30 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        brand: {
+          50: "#EEF4FF",
+          100: "#DCE8FF",
+          200: "#BDD3FF",
+          300: "#94B7FF",
+          400: "#5B86FF",
+          500: "#1E5EFF",
+          600: "#1A54E6",
+          700: "#1645BD",
+          800: "#163B75",
+          900: "#102B56",
+        },
+        accent: {
+          50: "#E9FAF7",
+          100: "#C8F2EC",
+          200: "#94E4D9",
+          300: "#5FD5C5",
+          400: "#2EC4B1",
+          500: "#14B8A6",
+          600: "#0D9488",
+          700: "#0B6E67",
+        },
+        gold: "#F5A524",
+        success: "#14A27C",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -63,7 +87,7 @@ module.exports = {
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
-n        },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",

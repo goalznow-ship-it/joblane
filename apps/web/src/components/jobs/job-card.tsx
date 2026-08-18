@@ -12,7 +12,7 @@ interface JobCardProps {
   showPostedTime?: boolean
 }
 
-export function JobCard({ job, variant = "default", showSalary = true, showPostedTime = true }: JobCardProps) {
+export default function JobCard({ job, variant = "default", showSalary = true, showPostedTime = true }: JobCardProps) {
   const [isHovered, setIsHovered] = React.useState(false)
 
   const handleMouseOver = () => setIsHovered(true)

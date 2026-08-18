@@ -8,9 +8,10 @@ services:
       dockerfile: infra/docker/web/Dockerfile
     container_name: joblane-web
     ports:
-      - "3000:3000"
+      - "1111:1111"
     environment:
       - NODE_ENV=development
+      - PORT=1111
       - NEXT_PUBLIC_API_URL=${API_URL}
       - NEXT_PUBLIC_WEB_URL=${WEB_URL}
     volumes:
@@ -23,7 +24,7 @@ services:
       - joblane-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost:1111"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -52,6 +53,7 @@ services:
       - MAIL_PORT=${MAIL_PORT}
       - AI_PROVIDER=${AI_PROVIDER}
       - RATE_LIMIT=${RATE_LIMIT}
+      - PYTHONPATH=/app/apps/api
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
@@ -89,6 +91,7 @@ services:
       - MAIL_HOST=${MAIL_HOST}
       - MAIL_PORT=${MAIL_PORT}
       - AI_PROVIDER=${AI_PROVIDER}
+      - PYTHONPATH=/app/apps/worker
     volumes:
       - ./apps/worker:/app/apps/worker
       - ./packages:/app/packages

@@ -1,13 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   reactStrictMode: true,
-  swcMinify: true,
   images: {
     domains: ['localhost'],
   },
   experimental: {
-    serverActions: true,
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
   transpilePackages: ['@joblane/ui'],
   async rewrites() {

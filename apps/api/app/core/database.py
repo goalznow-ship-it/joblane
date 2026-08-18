@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import text
 import logging
 from typing import AsyncGenerator
 from apps.api.app.core.config import settings
@@ -51,7 +52,7 @@ async def init_db():
     try:
         # Test connection
         async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         logger.info("Database connection established successfully")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")

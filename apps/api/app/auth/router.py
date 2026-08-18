@@ -38,7 +38,10 @@ from app.auth.dependencies import (
     rate_limit_login,
     rate_limit_forgot_password,
     rate_limit_resend_verification,
+    set_csrf_cookie,
+    clear_csrf_cookie,
 )
+from app.auth.security import generate_csrf_token
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -165,7 +168,8 @@ async def resend_verification(
 # Login
 @router.post("/login", response_model=LoginResponse)
 async def login(
-    request: LoginRequest,
+    login_data: LoginRequest,
+    request: Request,
     response: Response,
     _: bool = Depends(rate_limit_login),
     db: AsyncSession = Depends(get_db),
@@ -174,15 +178,17 @@ async def login(
     auth_service = AuthService(db)
     
     try:
-        user, session = await auth_service.login_user(
-            email=request.email,
-            password=request.password,
+        user, session, session_token = await auth_service.login_user(
+            email=login_data.email,
+            password=login_data.password,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("User-Agent"),
         )
         
-        # Set session cookie
-        response = set_session_cookie(response, session_token=generate_session_token())
+        # Generate and set CSRF cookie
+        csrf_token = generate_csrf_token()
+        response = set_session_cookie(response, session_token=session_token)
+        response = set_csrf_cookie(response, csrf_token)
         
         return LoginResponse()
     except HTTPException as e:
@@ -225,6 +231,7 @@ async def logout(
     try:
         await auth_service.logout_user(session)
         response = clear_session_cookie(response)
+        response = clear_csrf_cookie(response)
         return LogoutResponse()
     except Exception as e:
         logger.error(f"Logout failed: {e}")
@@ -248,6 +255,7 @@ async def logout_all(
     try:
         await auth_service.logout_all_sessions(user.id)
         response = clear_session_cookie(response)
+        response = clear_csrf_cookie(response)
         return LogoutResponse()
     except Exception as e:
         logger.error(f"Logout all failed: {e}")

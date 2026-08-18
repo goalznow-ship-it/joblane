@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     secret_key: str = secrets.token_urlsafe(32)
 
     # Server
-    web_url: AnyHttpUrl = "http://localhost:3000"
+    web_url: AnyHttpUrl = "http://localhost:1111"
     api_url: AnyHttpUrl = "http://localhost:8000"
     worker_url: AnyHttpUrl = "http://localhost:8001"
 
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     rate_limit_window: int = 60
 
     # CORS
-    allowed_origins: str = "http://localhost:3000,http://localhost:8000"
+    allowed_origins: str = "http://localhost:1111,http://localhost:8000"
 
     # Session
     session_cookie_name: str = "joblane_session"
@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = False
     session_cookie_http_only: bool = True
     session_cookie_same_site: str = "lax"
+    session_ttl_seconds: int = 604800  # 7 days
 
     # Security headers
     secure_hsts_seconds: int = 31536000
@@ -99,6 +100,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "allow"
 
 
 settings = Settings()

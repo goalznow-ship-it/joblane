@@ -1,0 +1,4 @@
+# Configuration and shared utilities
+python-dotenv==1.0.1
+pydantic==2.10.6
+pydantic-settings==2.3.4

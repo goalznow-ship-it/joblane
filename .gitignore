@@ -111,3 +111,16 @@ venv/
 .Trashes
 ehthumbs.db
 Thumbs.db
+# Local generated files
+node_modules/
+**/node_modules/
+*.bak
+cookies*.txt
+.next/
+
+# Local generated files
+node_modules/
+**/node_modules/
+*.bak
+cookies*.txt
+.next/

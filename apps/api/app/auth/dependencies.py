@@ -8,7 +8,7 @@ Provides reusable dependency functions for:
 - rate limiting
 """
 
-from fastapi import Depends, Request, HTTPException, status
+from fastapi import Depends, Request, Response, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Annotated
@@ -47,10 +47,39 @@ class SessionCookieBearer(HTTPBearer):
         )
 
 
+# CSRF token functions
+def set_csrf_cookie(response: Response, csrf_token: str) -> Response:
+    """Set CSRF token in a separate cookie (double-submit cookie pattern)."""
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,  # Must be readable by JavaScript
+        secure=settings.session_cookie_secure,
+        samesite=settings.session_cookie_same_site,
+        path="/",
+        max_age=settings.session_ttl_seconds,
+    )
+    return response
+
+
+def clear_csrf_cookie(response: Response) -> Response:
+    """Clear CSRF cookie."""
+    response.delete_cookie(
+        key="csrf_token",
+        path="/",
+    )
+    return response
+
+
 # CSRF token dependency
 async def get_csrf_token(request: Request) -> Optional[str]:
     """Extract CSRF token from header."""
     return request.headers.get("X-CSRF-Token")
+
+
+async def get_csrf_cookie(request: Request) -> Optional[str]:
+    """Extract CSRF token from cookie."""
+    return request.cookies.get("csrf_token")
 
 
 # Rate limiter
@@ -113,19 +142,23 @@ async def csrf_protection(
     request: Request,
     session: Annotated[UserSession, Depends(get_current_session)],
     csrf_token: Annotated[Optional[str], Depends(get_csrf_token)],
+    csrf_cookie: Annotated[Optional[str], Depends(get_csrf_cookie)],
 ) -> bool:
-    """CSRF protection for unsafe HTTP methods."""
+    """CSRF protection for unsafe HTTP methods using double-submit cookie pattern."""
     if request.method in ["GET", "HEAD", "OPTIONS"]:
         return True
     
     if not csrf_token:
-        logger.warning("CSRF token missing")
+        logger.warning("CSRF token missing from header")
         raise AuthCSRFInvalid()
     
-    # In a real implementation, we would validate the CSRF token against a stored value
-    # For now, we just check that it's present and not empty
-    if not csrf_token.strip():
-        logger.warning("CSRF token empty")
+    if not csrf_cookie:
+        logger.warning("CSRF token missing from cookie")
+        raise AuthCSRFInvalid()
+    
+    # Validate CSRF token matches cookie (double-submit cookie pattern)
+    if csrf_token != csrf_cookie:
+        logger.warning("CSRF token mismatch")
         raise AuthCSRFInvalid()
     
     return True

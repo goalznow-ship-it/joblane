@@ -12,7 +12,14 @@ from datetime import datetime, timedelta, timezone
 import logging
 
 from app.auth.models import User, UserSession, UserStatus
-from app.auth.repository import AuthRepository, hash_token, normalize_email
+from app.auth.repository import (
+    AuthRepository,
+    hash_token,
+    normalize_email,
+    generate_verification_token,
+    generate_reset_token,
+    generate_session_token,
+)
 from app.auth.exceptions import (
     AuthInvalidCredentials,
     AuthEmailNotVerified,
@@ -22,6 +29,11 @@ from app.auth.exceptions import (
 )
 from app.core.security import verify_password, get_password_hash
 from app.core.config import settings
+from app.core.email_client import (
+    queue_verification_email,
+    queue_password_reset_email,
+    queue_password_changed_notification,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +100,9 @@ class AuthService:
             token_hash=token_hash,
             expires_at=expires_at,
         )
+        
+        # Queue verification email
+        await queue_verification_email(email, verification_token)
         
         logger.info(f"User registered: {email} (status: {user.status})")
         return user, verification_token
@@ -161,7 +176,10 @@ class AuthService:
             expires_at=expires_at,
         )
         
-        logger.info(f"Resend verification email sent to: {email}")
+        # Queue verification email
+        await queue_verification_email(email, verification_token)
+        
+        logger.info(f"Resend verification email queued for: {email}")
         return user
     
     async def login_user(
@@ -218,7 +236,7 @@ class AuthService:
         )
         
         logger.info(f"User logged in: {email}")
-        return user, session
+        return user, session, session_token
     
     async def logout_user(self, session: UserSession) -> None:
         """Logout user by revoking session."""
@@ -250,6 +268,9 @@ class AuthService:
                 token_hash=token_hash,
                 expires_at=expires_at,
             )
+            
+            # Queue password reset email
+            await queue_password_reset_email(email, reset_token)
             
             logger.info(f"Password reset initiated for user: {email}")
         else:
@@ -306,6 +327,9 @@ class AuthService:
         # Revoke all existing sessions
         await self.repository.revoke_all_sessions(user.id)
         
+        # Queue password changed notification
+        await queue_password_changed_notification(user.email)
+        
         logger.info(f"Password reset for user: {user.email}")
         return user
     
@@ -336,12 +360,16 @@ class AuthService:
         # Revoke all other sessions
         await self.repository.revoke_all_sessions(user.id)
         
+        # Queue password changed notification
+        await queue_password_changed_notification(user.email)
+        
         logger.info(f"Password changed for user: {user.email}")
         return user
     
     # Session validation
-    async def validate_session(self, token_hash: str) -> Optional[UserSession]:
+    async def validate_session(self, raw_token: str) -> Optional[UserSession]:
         """Validate a session token."""
+        token_hash = hash_token(raw_token)
         session = await self.repository.get_session_by_token_hash(token_hash)
         
         if not session:
@@ -358,6 +386,12 @@ class AuthService:
         if session.expires_at and session.expires_at < now:
             logger.debug("Session expired")
             return None
+        
+        # Throttle last_seen_at updates to ~5 minutes
+        if session.last_seen_at:
+            time_since_last_seen = now - session.last_seen_at
+            if time_since_last_seen < timedelta(minutes=5):
+                return session
         
         # Update last seen
         await self.repository.update_session_last_seen(session)

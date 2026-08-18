@@ -1,0 +1,19 @@
+{
+  "name": "@joblane/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "eslint": "9.13.0"
+  }
+}

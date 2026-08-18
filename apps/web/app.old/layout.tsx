@@ -1,13 +1,10 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-import { ThemeProvider } from '@/components/theme-provider'
-
-const inter = Inter({ subsets: ['latin'] })
+import { ThemeProvider } from 'next-themes'
 
 export const metadata: Metadata = {
   title: 'Joblane - Azərbaycanın ən yaxşı iş platforması',
-  description: 'İş axtaranlar və işə qəbul edənlər üçün müasir platforma',
+  description: 'İş axtaranlar və İşə qəbul edənlər üçün müasir platforma',
 }
 
 export default function RootLayout({
@@ -17,9 +14,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="az" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body>
         <ThemeProvider
-          attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange

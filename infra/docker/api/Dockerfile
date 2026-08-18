@@ -32,9 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev && \
     pip install --no-cache-dir asyncpg && \
     pip install --no-cache-dir uvicorn && \
     pip install --no-cache-dir -r /app/apps/api/requirements.txt && \
-    pip install --no-cache-dir -r /app/packages/config/requirements.txt && \
-    mkdir -p /app && \
-    cp /docker-entrypoint-initdb.d/.env /app/.env
+    pip install --no-cache-dir -r /app/packages/config/requirements.txt
 
 # Copy application code
 COPY apps/api /app/apps/api

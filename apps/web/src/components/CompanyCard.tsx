@@ -9,7 +9,7 @@ interface CompanyCardProps {
   company: any
 }
 
-export function CompanyCard({ company }: CompanyCardProps) {
+export function CompanyCardSkeleton() { return <div className="h-48 bg-muted/50 rounded-lg animate-pulse" />; } export function CompanyCard({ company }: CompanyCardProps) {
   return (
     <Link href={`/companies/${company.slug}`} className="block">
       <div className="h-full flex flex-col">
