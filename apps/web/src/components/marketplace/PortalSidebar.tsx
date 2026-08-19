@@ -146,7 +146,7 @@ export default function PortalSidebar() {
                 Qonaq istifadəçi
               </p>
               <Link
-                href="/login"
+                href="/auth/login"
                 className="text-[11px] font-medium text-brand-500 hover:text-brand-600 hover:underline"
               >
                 Daxil ol / Qeydiyyat

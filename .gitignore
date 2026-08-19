@@ -124,3 +124,7 @@ node_modules/
 *.bak
 cookies*.txt
 .next/
+
+# Joblane frontend source helpers must be tracked
+!apps/web/src/lib/
+!apps/web/src/lib/**

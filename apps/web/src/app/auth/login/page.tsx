@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { activeApi } from "@/lib/api"
+import { authApi, ApiError } from "@/lib/api"
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +18,14 @@ function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || "/"
+
+  const safeRedirect = () => {
+    if (!redirect || redirect.startsWith("http://") || redirect.startsWith("https://") || redirect.startsWith("//")) {
+      return "/"
+    }
+    if (redirect.startsWith("/")) return redirect
+    return "/"
+  }
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -31,14 +39,18 @@ function LoginContent() {
     setLoading(true)
 
     try {
-      // In real implementation, this would call the backend auth API
-      // For now, we'll simulate a login
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Mock successful login - in reality, this would set cookies/tokens
-      router.push(redirect)
+      await authApi.login(email, password)
+      router.push(safeRedirect())
+      router.refresh()
     } catch (err) {
-      setError("Daxil olma uğursuz oldu. E-poçt və şifrəni yoxla.")
+      if (err instanceof ApiError) {
+        const detail = err.detail as any
+        const apiMessage =
+          typeof detail === "string" ? detail : detail?.error?.message ?? detail?.message ?? null
+        setError(apiMessage || "Daxil olma uğursuz oldu. E-poçt və şifrəni yoxla.")
+      } else {
+        setError("Serverə qoşulmaq mümkün olmadı")
+      }
     } finally {
       setLoading(false)
     }

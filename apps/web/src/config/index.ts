@@ -22,7 +22,7 @@ export const defaultConfig: AppConfig = {
   appName: "Joblane",
   appEnv: "development",
   appDebug: true,
-  apiUrl: "http://localhost:8000",
+  apiUrl: "http://localhost:8002",
   webUrl: "http://localhost:1111",
   session: {
     cookieName: "joblane_session",
@@ -31,7 +31,7 @@ export const defaultConfig: AppConfig = {
     sameSite: "lax",
   },
   cors: {
-    allowedOrigins: ["http://localhost:1111", "http://localhost:8000"],
+    allowedOrigins: ["http://localhost:1111", "http://localhost:8002"],
   },
 }
 

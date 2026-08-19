@@ -55,7 +55,7 @@ export default function TopHeader() {
             <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-brand-500 ring-2 ring-white" />
           </button>
           <Link
-            href="/login"
+            href="/auth/login"
             className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-100 hover:text-brand-600"
           >
             Daxil ol
