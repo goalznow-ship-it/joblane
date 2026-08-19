@@ -157,6 +157,7 @@ class LocalStorageProvider(StorageProvider):
         os.makedirs(bucket_path, exist_ok=True)
         
         file_path = os.path.join(bucket_path, object_name)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
         with open(file_path, "wb") as f:
             f.write(data.read())

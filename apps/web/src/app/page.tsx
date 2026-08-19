@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { FileText, Building2, Briefcase, ArrowRight } from "lucide-react"
 
@@ -14,11 +14,218 @@ import AdvertisementSlot from "@/components/marketplace/AdvertisementSlot"
 import SideSkin from "@/components/marketplace/SideSkin"
 import CompanyLogo from "@/components/marketplace/CompanyLogo"
 
-import { categories, companies, jobs, getAdsByPlacement } from "@/lib/fixtures"
+import { categories, companies, jobs, advertisements, getAdsByPlacement } from "@/lib/fixtures"
+import type { Advertisement } from "@/lib/fixtures"
+
+interface AdState {
+  topLeaderboard: Advertisement[]
+  leftSkin: Advertisement[]
+  rightSkin: Advertisement[]
+  sidebarRectangle: Advertisement | null
+  inlineFeed: Advertisement | null
+  loading: boolean
+}
+
+const initialAdState: AdState = {
+  topLeaderboard: [],
+  leftSkin: [],
+  rightSkin: [],
+  sidebarRectangle: null,
+  inlineFeed: null,
+  loading: true,
+}
+
+function getAdsFromFixtures() {
+  return {
+    topLeaderboard: getAdsByPlacement("top_leaderboard", advertisements),
+    leftSkin: getAdsByPlacement("left_rail", advertisements).filter(a => a.railSide === "left"),
+    rightSkin: getAdsByPlacement("right_rail", advertisements).filter(a => a.railSide === "right"),
+    sidebarRectangle: getAdsByPlacement("sidebar_rectangle", advertisements)[0] || null,
+    inlineFeed: getAdsByPlacement("inline_feed", advertisements)[0] || null,
+  }
+}
 
 export default function HomePage() {
   const [query, setQuery] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState<Set<string>>(new Set())
+  const [ads, setAds] = useState<AdState>(initialAdState)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadAds() {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002"
+
+        const [topRes, leftRes, rightRes, sidebarRes, inlineRes] = await Promise.allSettled([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002"}/api/v1/admin/public/ads/active?placement=TOP_LEADERBOARD&limit=2`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002"}/api/v1/admin/public/ads/active?placement=LEFT_SKIN&limit=4`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002"}/api/v1/admin/public/ads/active?placement=RIGHT_SKIN&limit=4`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002"}/api/v1/admin/public/ads/active?placement=RIGHT_SIDEBAR&limit=1`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002"}/api/v1/admin/public/ads/active?placement=INLINE_FEED&limit=1`),
+        ])
+
+        if (cancelled) return
+
+        const ads = {
+          topLeaderboard: [],
+          leftSkin: [],
+          rightSkin: [],
+          sidebarRectangle: null,
+          inlineFeed: null,
+          loading: false,
+        }
+
+        if (topRes.status === "fulfilled" && topRes.value.ok) {
+          const data = await topRes.value.json()
+          ads.topLeaderboard = data.items.map((ad: any) => ({
+            ...ad,
+            placement: "top_leaderboard" as const,
+            format: ad.format as any,
+            industry: "banking" as any,
+            advertiserName: ad.advertiser_name,
+            headline: ad.headline || "",
+            description: ad.description,
+            features: ad.cta_label ? [ad.cta_label] : undefined,
+            ctaLabel: ad.cta_label || "Ətraflı",
+            href: ad.destination_url,
+            creativeImage: ad.creative_image_url || "phone",
+            background: ad.background || "blue",
+            accentColor: ad.accent_color || "#2DD4BF",
+            altText: ad.alt_text,
+            railSide: "left" as const,
+            sequence: 0,
+            startDate: undefined,
+            endDate: undefined,
+            active: true,
+          }))
+        }
+
+        if (leftRes.status === "fulfilled" && leftRes.value.ok) {
+          const data = await leftRes.value.json()
+          ads.leftSkin = data.items.map((ad: any, i: number) => ({
+            ...ad,
+            placement: "left_rail" as const,
+            format: ad.format as any,
+            industry: "electronics" as any,
+            advertiserName: ad.advertiser_name,
+            headline: ad.headline || "",
+            description: ad.description,
+            features: ad.cta_label ? [ad.cta_label] : undefined,
+            ctaLabel: ad.cta_label || "Ətraflı",
+            href: ad.destination_url,
+            creativeImage: ad.creative_image_url || "phone",
+            background: ad.background || "navy",
+            accentColor: ad.accent_color || "#2DD4BF",
+            altText: ad.alt_text,
+            railSide: "left" as const,
+            sequence: i + 1,
+            startDate: undefined,
+            endDate: undefined,
+            active: true,
+          }))
+        }
+
+        if (rightRes.status === "fulfilled" && rightRes.value.ok) {
+          const data = await rightRes.value.json()
+          ads.rightSkin = data.items.map((ad: any, i: number) => ({
+            ...ad,
+            placement: "right_rail" as const,
+            format: ad.format as any,
+            industry: "travel" as any,
+            advertiserName: ad.advertiser_name,
+            headline: ad.headline || "",
+            description: ad.description,
+            features: ad.cta_label ? [ad.cta_label] : undefined,
+            ctaLabel: ad.cta_label || "Ətraflı",
+            href: ad.destination_url,
+            creativeImage: ad.creative_image_url || "airplane",
+            background: ad.background || "teal",
+            accentColor: ad.accent_color || "#FBBF24",
+            altText: ad.alt_text,
+            railSide: "right" as const,
+            sequence: i + 1,
+            startDate: undefined,
+            endDate: undefined,
+            active: true,
+          }))
+        }
+
+        if (sidebarRes.status === "fulfilled" && sidebarRes.value.ok) {
+          const data = await sidebarRes.value.json()
+          if (data.items.length > 0) {
+            const ad = data.items[0]
+            ads.sidebarRectangle = {
+              ...ad,
+              placement: "sidebar_rectangle" as const,
+              format: ad.format as any,
+              industry: "insurance" as any,
+              advertiserName: ad.advertiser_name,
+              headline: ad.headline || "",
+              description: ad.description,
+              features: ad.cta_label ? [ad.cta_label] : undefined,
+              ctaLabel: ad.cta_label || "Ətraflı",
+              href: ad.destination_url,
+              creativeImage: ad.creative_image_url || "generic",
+              background: ad.background || "blue",
+              accentColor: ad.accent_color || "#2DD4BF",
+              altText: ad.alt_text,
+              railSide: "right" as const,
+              sequence: 1,
+              startDate: undefined,
+              endDate: undefined,
+              active: true,
+            }
+          }
+        }
+
+        if (inlineRes.status === "fulfilled" && inlineRes.value.ok) {
+          const data = await inlineRes.value.json()
+          if (data.items.length > 0) {
+            const ad = data.items[0]
+            ads.inlineFeed = {
+              ...ad,
+              placement: "inline_feed" as const,
+              format: ad.format as any,
+              industry: "telecom" as any,
+              advertiserName: ad.advertiser_name,
+              headline: ad.headline || "",
+              description: ad.description,
+              features: ad.cta_label ? [ad.cta_label] : undefined,
+              ctaLabel: ad.cta_label || "Ətraflı",
+              href: ad.destination_url,
+              creativeImage: ad.creative_image_url || "generic",
+              background: ad.background || "blue",
+              accentColor: ad.accent_color || "#2DD4BF",
+              altText: ad.alt_text,
+              railSide: "left" as const,
+              sequence: 1,
+              startDate: undefined,
+              endDate: undefined,
+              active: true,
+            }
+          }
+        }
+
+        setAds(ads)
+      } catch (error) {
+        console.warn("Failed to load ads from API, using fixtures:", error)
+        if (!cancelled) {
+          const fixtureAds = getAdsFromFixtures()
+          setAds({
+            ...fixtureAds,
+            loading: false,
+          })
+        }
+      }
+    }
+
+    loadAds()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const toggleSave = (id: string) => {
     setSaved((prev) => {
@@ -80,20 +287,44 @@ export default function HomePage() {
 
   const featuredCompany = topCompanies[0]
 
-  const sidebarAds = getAdsByPlacement("sidebar_rectangle")
-  const rightRailAd = sidebarAds[0]
-  const topLeaderboard = getAdsByPlacement("top_leaderboard")
-  const inlineAd = getAdsByPlacement("inline_feed")[0]
+  const topLeaderboard = ads.topLeaderboard
+  const leftSkin = ads.leftSkin
+  const rightSkin = ads.rightSkin
+  const sidebarRectangle = ads.sidebarRectangle
+  const inlineFeed = ads.inlineFeed
 
   const topAdDesktop = topLeaderboard.find((ad) => ad.format === "970x90")
   const topAdResponsive = topLeaderboard.find((ad) => ad.format === "320x100")
+  const leftSkinAds = leftSkin
+  const rightSkinAds = rightSkin
+
+  if (ads.loading) {
+    return (
+      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="h-8 w-8 animate-spin text-[#2563EB] border-4 border-slate-200 border-t-brand-500 rounded-full" />
+          <span className="text-sm">Yüklənir...</span>
+        </div>
+      </div>
+    )
+  }
+
+
+
+
+
+
+  const sidebarAds = sidebarRectangle ? [sidebarRectangle] : []
+  const rightRailAd = sidebarRectangle
+  const inlineAd = ads.inlineFeed
+
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <TopHeader />
 
       <div className="grid w-full justify-center gap-6 min-[1400px]:grid-cols-[120px_minmax(0,1fr)_120px] min-[1800px]:grid-cols-[160px_minmax(0,1200px)_160px]">
-        <SideSkin side="left" />
+        {leftSkinAds.length > 0 && <SideSkin side="left" ads={leftSkinAds} />}
 
         <div className="flex min-w-0 flex-col">
           {topAdDesktop && (
@@ -160,7 +391,7 @@ export default function HomePage() {
               </div>
               <VacancyList
                 jobs={shownLatest}
-                inlineAd={inlineAd}
+                inlineAd={inlineFeed || undefined}
                 adEvery={8}
                 onSave={toggleSave}
                 savedIds={saved}
@@ -285,14 +516,14 @@ export default function HomePage() {
         </main>
 
         <RightRail
-          ad={rightRailAd}
+          ad={rightRailAd || undefined}
           featuredCompany={featuredCompany}
           trendingCategories={trendingCategories}
         />
         </div>
         </div>
 
-        <SideSkin side="right" />
+        {rightSkinAds.length > 0 && <SideSkin side="right" ads={rightSkinAds} />}
       </div>
     </div>
   )

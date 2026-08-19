@@ -25,19 +25,20 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { hasPermission } from "@/lib/admin-api"
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; disabled?: boolean; permission?: string }[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/listings", label: "Vakansiyalar", icon: Briefcase },
-  { href: "/admin/companies", label: "Şirkətlər", icon: Building2, disabled: true },
-  { href: "/admin/users", label: "İstifadəçilər", icon: Users, disabled: true },
+  { href: "/admin/listings", label: "Vakansiyalar", icon: Briefcase, permission: "jobs.view" },
+  { href: "/admin/companies", label: "Şirkətlər", icon: Building2, permission: "companies.view" },
+  { href: "/admin/users", label: "İstifadəçilər", icon: Users, permission: "users.view" },
   { href: "/admin/applications", label: "Müraciətlər", icon: FileText, disabled: true },
-  { href: "/admin/categories", label: "Kateqoriyalar", icon: FolderTree, disabled: true },
-  { href: "/admin/industries", label: "Sənayelər", icon: Factory, disabled: true },
-  { href: "/admin/regions", label: "Regionlar", icon: MapPin, disabled: true },
-  { href: "/admin/internships", label: "Təcrübə proqramları", icon: GraduationCap, disabled: true },
-  { href: "/admin/trainings", label: "Təlimlər", icon: School, disabled: true },
-  { href: "/admin/ads", label: "Reklamlar", icon: Megaphone, disabled: true },
+  { href: "/admin/categories", label: "Kateqoriyalar", icon: FolderTree, permission: "categories.manage" },
+  { href: "/admin/industries", label: "Sənayelər", icon: Factory, permission: "industries.manage" },
+  { href: "/admin/regions", label: "Regionlar", icon: MapPin, permission: "regions.manage" },
+  { href: "/admin/internships", label: "Təcrübə proqramları", icon: GraduationCap, permission: "internships.manage" },
+  { href: "/admin/trainings", label: "Təlimlər", icon: School, permission: "trainings.manage" },
+  { href: "/admin/ads", label: "Reklamlar", icon: Megaphone, permission: "ads.view" },
   { href: "/admin/promotions", label: "Promosiyalar", icon: Rocket, disabled: true },
   { href: "/admin/payments", label: "Ödənişlər", icon: CreditCard, disabled: true },
   { href: "/admin/complaints", label: "Şikayətlər", icon: ShieldAlert, disabled: true },
@@ -111,6 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <ul className="space-y-1">
             {NAV_ITEMS.map((item) => {
+              if (item.permission && !hasPermission(me, item.permission)) return null
               const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)
               const Icon = item.icon
               if (item.disabled) {

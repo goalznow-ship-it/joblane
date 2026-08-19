@@ -10,14 +10,14 @@ type AvatarFallbackProps = React.ComponentPropsWithoutRef<typeof AvatarPrimitive
 
 const Avatar = React.forwardRef<HTMLDivElement, AvatarRootProps>(
   (props, ref) => {
-    const { className, ...props } = props
+    const { className, ...rest } = props
     return React.createElement(AvatarPrimitive.Root, {
       ref,
       className: cn(
         "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
         className
       ),
-      ...props
+      ...rest
     })
   }
 )
@@ -25,11 +25,11 @@ Avatar.displayName = "Avatar"
 
 const AvatarImage = React.forwardRef<HTMLImageElement, React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>>(
   (props, ref) => {
-    const { className, ...props } = props
+    const { className, ...rest } = props
     return React.createElement(AvatarPrimitive.Image, {
       ref,
       className: cn("aspect-square h-full w-full", className),
-      ...props
+      ...rest
     })
   }
 )
@@ -37,14 +37,14 @@ AvatarImage.displayName = "AvatarImage"
 
 const AvatarFallback = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>>(
   (props, ref) => {
-    const { className, ...props } = props
+    const { className, ...rest } = props
     return React.createElement(AvatarPrimitive.Fallback, {
       ref,
       className: cn(
         "flex h-full w-full items-center justify-center rounded-full bg-muted",
         className
       ),
-      ...props
+      ...rest
     })
   }
 )

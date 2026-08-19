@@ -1,7 +1,8 @@
 "use client"
 
+import React from "react"
 import { cn } from "@/lib/utils"
-import { Briefcase, Calculator, Shop, Users, HardHat, TrendingUp, Truck, Heart } from "lucide-react"
+import { Briefcase, Calculator, Store, Users, HardHat, TrendingUp, Truck, Heart, ChevronDown } from "lucide-react"
 import { categories } from "@/lib/fixtures/categories"
 import Link from "next/link"
 
@@ -23,17 +24,17 @@ export default function PopularCategories() {
 }
 
 export function CategoryCard({ category }: { category: Category }) {
-  const iconMap: Record<string, React.ComponentType> = {
-    calculator: "C",
-    shop: "S",
-    users: "U",
-    hardHat: "M",
-    trendingUp: "T",
-    truck: "L",
-    heart: "H",
+  const iconMap: Record<string, typeof Calculator> = {
+    calculator: Calculator,
+    store: Store,
+    users: Users,
+    hardHat: HardHat,
+    trendingUp: TrendingUp,
+    truck: Truck,
+    heart: Heart,
   }
 
-  const iconComp = iconMap[category.icon] || "C"
+  const IconComponent = iconMap[category.icon] || Calculator
 
   return (
     <Link
@@ -42,7 +43,7 @@ export function CategoryCard({ category }: { category: Category }) {
       className="group rounded-lg bg-muted p-3.5 hover:bg-muted/80 transition-colors flex items-center gap-3"
     >
       <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-        <iconComp className="h-5 w-5" aria-hidden="true" />
+        {React.createElement(IconComponent, { className: "h-5 w-5", "aria-hidden": "true" })}
       </div>
       <div>
         <span className="font-medium line-clamp-1">{category.name}</span>
