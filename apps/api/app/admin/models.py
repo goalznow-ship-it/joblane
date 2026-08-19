@@ -5,12 +5,17 @@ Contains SQLAlchemy models for:
 - Company
 - JobCategory
 - Region
+- Industry
 - Job
 - JobModerationHistory
+- CompanyModerationHistory
 - Advertisement
+- AdvertisementModerationHistory
 - Promotion
 - AuditLog
 - Application (oversight)
+- Internship
+- Training
 
 All models use UUID primary keys in the public schema, managed by Alembic.
 """
@@ -38,7 +43,6 @@ from datetime import datetime, timezone
 
 def utcnow():
     return datetime.now(timezone.utc)
-
 
 
 class JobStatus(enum.Enum):
@@ -130,6 +134,23 @@ class ApplicationStatus(enum.Enum):
     WITHDRAWN = "WITHDRAWN"
 
 
+class TrainingFormat(enum.Enum):
+    ONLINE = "ONLINE"
+    OFFLINE = "OFFLINE"
+    HYBRID = "HYBRID"
+
+
+class ContentStatus(enum.Enum):
+    DRAFT = "DRAFT"
+    PENDING_REVIEW = "PENDING_REVIEW"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    PUBLISHED = "PUBLISHED"
+    PAUSED = "PAUSED"
+    EXPIRED = "EXPIRED"
+    ARCHIVED = "ARCHIVED"
+
+
 class Company(Base):
     __tablename__ = "companies"
 
@@ -143,6 +164,7 @@ class Company(Base):
     address = Column(String(255))
     socials = Column(JSON, default=dict)
     industry = Column(String(100))
+    industry_id = Column(UUID(as_uuid=True), ForeignKey("industries.id"))
     logo_url = Column(String(255))
     cover_url = Column(String(255))
     status = Column(Enum(CompanyStatus, name="company_status"), default=CompanyStatus.PENDING, nullable=False, index=True)
@@ -155,6 +177,9 @@ class Company(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
 
     jobs = relationship("Job", back_populates="company")
+    internships = relationship("Internship", back_populates="company")
+    trainings = relationship("Training", back_populates="provider")
+    industry_rel = relationship("Industry")
 
 
 class JobCategory(Base):
@@ -187,6 +212,21 @@ class Region(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
 
 
+class Industry(Base):
+    __tablename__ = "industries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    name = Column(String(255), nullable=False)
+    slug = Column(String(255), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    seo_title = Column(String(255))
+    seo_description = Column(Text)
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
+
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -207,6 +247,7 @@ class Job(Base):
     region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"))
     category_id = Column(UUID(as_uuid=True), ForeignKey("job_categories.id"))
     industry = Column(String(100))
+    industry_id = Column(UUID(as_uuid=True), ForeignKey("industries.id"))
     employment_type = Column(Enum(EmploymentType, name="employment_type"), nullable=False, index=True)
     work_mode = Column(Enum(WorkMode, name="work_mode"), index=True)
     experience_level = Column(String(50))
@@ -241,6 +282,7 @@ class Job(Base):
     company = relationship("Company", back_populates="jobs")
     category = relationship("JobCategory")
     region = relationship("Region")
+    industry_rel = relationship("Industry")
     moderation_history = relationship(
         "JobModerationHistory",
         back_populates="job",
@@ -263,6 +305,20 @@ class JobModerationHistory(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
 
     job = relationship("Job", back_populates="moderation_history")
+
+
+class CompanyModerationHistory(Base):
+    __tablename__ = "company_moderation_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_status = Column(String(50))
+    to_status = Column(String(50), nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    actor_email = Column(String(255))
+    reason = Column(String(255))
+    note = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
 
 
 class Advertisement(Base):
@@ -288,6 +344,12 @@ class Advertisement(Base):
     )
     creative_image = Column(String(500))
     mobile_image = Column(String(500))
+    creative_image_url = Column(String(500))
+    mobile_image_url = Column(String(500))
+    creative_file_size = Column(Integer)
+    creative_mime_type = Column(String(100))
+    creative_width = Column(Integer)
+    creative_height = Column(Integer)
     background = Column(String(64))
     accent_color = Column(String(32))
     start_at = Column(DateTime(timezone=True))
@@ -299,6 +361,61 @@ class Advertisement(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
+
+    moderation_history = relationship(
+        "AdvertisementModerationHistory",
+        back_populates="advertisement",
+        cascade="all, delete-orphan",
+        order_by="AdvertisementModerationHistory.created_at.desc()",
+    )
+
+
+class AdvertisementModerationHistory(Base):
+    __tablename__ = "advertisement_moderation_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    advertisement_id = Column(UUID(as_uuid=True), ForeignKey("advertisements.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_status = Column(String(50))
+    to_status = Column(String(50), nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    actor_email = Column(String(255))
+    reason = Column(String(255))
+    note = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+
+    advertisement = relationship("Advertisement", back_populates="moderation_history")
+
+
+class InternshipModerationHistory(Base):
+    __tablename__ = "internship_moderation_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    internship_id = Column(UUID(as_uuid=True), ForeignKey("internships.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_status = Column(String(50))
+    to_status = Column(String(50), nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    actor_email = Column(String(255))
+    reason = Column(String(255))
+    note = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+
+    internship = relationship("Internship", back_populates="moderation_history")
+
+
+class TrainingModerationHistory(Base):
+    __tablename__ = "training_moderation_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    training_id = Column(UUID(as_uuid=True), ForeignKey("trainings.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_status = Column(String(50))
+    to_status = Column(String(50), nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    actor_email = Column(String(255))
+    reason = Column(String(255))
+    note = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+
+    training = relationship("Training", back_populates="moderation_history")
 
 
 class Promotion(Base):
@@ -314,6 +431,81 @@ class Promotion(Base):
     priority = Column(Integer, default=0)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+
+
+class Internship(Base):
+    __tablename__ = "internships"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    slug = Column(String(255), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    requirements = Column(Text)
+    location = Column(String(255))
+    region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"))
+    work_mode = Column(Enum(WorkMode, name="work_mode"), index=True)
+    application_url = Column(String(500))
+    application_deadline = Column(DateTime(timezone=True))
+    start_date = Column(DateTime(timezone=True))
+    end_date = Column(DateTime(timezone=True))
+    status = Column(Enum(ContentStatus, name="internship_status"), default=ContentStatus.DRAFT, nullable=False, index=True)
+    moderation_reason = Column(String(255))
+    moderation_note = Column(Text)
+    admin_note = Column(Text)
+    is_featured = Column(Boolean, default=False, nullable=False, index=True)
+    featured_until = Column(DateTime(timezone=True))
+    views = Column(Integer, default=0, nullable=False)
+    applications_count = Column(Integer, default=0, nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
+
+    company = relationship("Company", back_populates="internships")
+    region = relationship("Region")
+    moderation_history = relationship(
+        "InternshipModerationHistory",
+        back_populates="internship",
+        cascade="all, delete-orphan",
+        order_by="InternshipModerationHistory.created_at.desc()",
+    )
+
+
+class Training(Base):
+    __tablename__ = "trainings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    provider_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    slug = Column(String(255), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    location = Column(String(255))
+    format = Column(Enum(TrainingFormat, name="training_format"), index=True)
+    price = Column(Numeric(12, 2))
+    currency = Column(String(3), default="AZN")
+    application_url = Column(String(500))
+    start_date = Column(DateTime(timezone=True))
+    end_date = Column(DateTime(timezone=True))
+    application_deadline = Column(DateTime(timezone=True))
+    status = Column(Enum(ContentStatus, name="training_status"), default=ContentStatus.DRAFT, nullable=False, index=True)
+    moderation_reason = Column(String(255))
+    moderation_note = Column(Text)
+    admin_note = Column(Text)
+    is_featured = Column(Boolean, default=False, nullable=False, index=True)
+    featured_until = Column(DateTime(timezone=True))
+    views = Column(Integer, default=0, nullable=False)
+    applications_count = Column(Integer, default=0, nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
+
+    provider = relationship("Company", back_populates="trainings")
+    moderation_history = relationship(
+        "TrainingModerationHistory",
+        back_populates="training",
+        cascade="all, delete-orphan",
+        order_by="TrainingModerationHistory.created_at.desc()",
+    )
 
 
 class Application(Base):

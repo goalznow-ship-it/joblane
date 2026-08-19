@@ -13,7 +13,7 @@ import {
   Headphones,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { advertisements } from "@/lib/fixtures"
+import type { Advertisement } from "@/lib/fixtures"
 
 const CONTINUATION_MIN = 520
 
@@ -155,7 +155,7 @@ function SkinHero({
   )
 }
 
-function Continuation({ ad, i }: { ad: (typeof advertisements)[number]; i: number }) {
+function Continuation({ ad, i }: { ad: Advertisement; i: number }) {
   const accent = ad.accentColor ?? "#ffffff"
   const travel = ad.industry === "travel"
   const templates = travel
@@ -236,7 +236,12 @@ function Continuation({ ad, i }: { ad: (typeof advertisements)[number]; i: numbe
   )
 }
 
-export default function SideSkin({ side }: { side: "left" | "right" }) {
+interface SideSkinProps {
+  side: "left" | "right"
+  ads?: Advertisement[]
+}
+
+export default function SideSkin({ side, ads = [] }: SideSkinProps) {
   const asideRef = useRef<HTMLDivElement>(null)
   const [sections, setSections] = useState(2)
 
@@ -265,10 +270,10 @@ export default function SideSkin({ side }: { side: "left" | "right" }) {
 
   const ad = useMemo(
     () =>
-      advertisements
+      ads
         .filter((a) => a.railSide === side && a.active)
         .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))[0],
-    [side]
+    [side, ads]
   )
 
   if (!ad) return null
