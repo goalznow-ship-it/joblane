@@ -38,12 +38,12 @@ const PLACEMENT_LABELS: Record<string, string> = {
 }
 
 const FORMAT_LABELS: Record<string, string> = {
-  FORMAT_970x90: "970x90",
-  FORMAT_160x600: "160x600",
-  FORMAT_120x600: "120x600",
-  FORMAT_300x250: "300x250",
-  FORMAT_728x90: "728x90",
-  FORMAT_320x100: "320x100",
+  "970x90": "970x90",
+  "160x600": "160x600",
+  "120x600": "120x600",
+  "300x250": "300x250",
+  "728x90": "728x90",
+  "320x100": "320x100",
   CUSTOM_SKIN: "CUSTOM_SKIN",
 }
 

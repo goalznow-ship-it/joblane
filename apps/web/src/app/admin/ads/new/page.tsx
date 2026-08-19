@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { adminApi, type AdminMe } from "@/lib/admin-api"
+import { adminApi, type AdminMe, type AdvertisementCreateRequest } from "@/lib/admin-api"
 import {
   ArrowLeft,
   Loader2,
@@ -42,7 +42,7 @@ const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Aktiv",
   PAUSED: "Dayandırılıb",
   EXPIRED: "Vaxtı bitib",
-  ARCHIVED: "Arxivleşib",
+  ARCHIVED: "Arxivləşib",
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -64,12 +64,12 @@ const PLACEMENT_LABELS: Record<string, string> = {
 }
 
 const FORMAT_LABELS: Record<string, string> = {
-  FORMAT_970x90: "970x90",
-  FORMAT_160x600: "160x600",
-  FORMAT_120x600: "120x600",
-  FORMAT_300x250: "300x250",
-  FORMAT_728x90: "728x90",
-  FORMAT_320x100: "320x100",
+  "970x90": "970x90",
+  "160x600": "160x600",
+  "120x600": "120x600",
+  "300x250": "300x250",
+  "728x90": "728x90",
+  "320x100": "320x100",
   CUSTOM_SKIN: "CUSTOM_SKIN",
 }
 
@@ -107,7 +107,7 @@ export default function AdminAdCreatePage() {
     destination_url: "",
     alt_text: "",
     placement: "TOP_LEADERBOARD",
-    format: "FORMAT_970x90",
+    format: "970x90",
     creative_image: null as File | null,
     mobile_image: null as File | null,
     background: "blue",
@@ -159,49 +159,49 @@ export default function AdminAdCreatePage() {
       return
     }
 
-    const fd = new FormData()
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value instanceof File) {
-        fd.append(key, value)
-      } else if (value !== undefined && value !== null && value !== "") {
-        fd.append(key, String(value))
-      }
-    })
-
-    // Handle status based on action
-    let status = formData.status
-    if (action === "schedule") status = "SCHEDULED"
-    if (action === "activate") status = "ACTIVE"
-    fd.set("status", status)
-
     setLoading(true)
     setError("")
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_ADMIN_API_URL || "http://localhost:8002"}/api/v1/admin/ads`, {
-        method: "POST",
-        body: fd,
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)?.[1] || "",
-        },
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || err.message || "Yaratma uğursuz oldu")
+      let creative_image_url = ""
+      if (formData.creative_image) {
+        const up = await adminApi.uploadAdCreative(formData.creative_image, false)
+        creative_image_url = up.url
+      }
+      let mobile_image_url = ""
+      if (formData.mobile_image) {
+        const up = await adminApi.uploadAdCreative(formData.mobile_image, true)
+        mobile_image_url = up.url
       }
 
-      const ad = await res.json()
+      let status = formData.status
+      if (action === "schedule") status = "SCHEDULED"
+      if (action === "activate") status = "ACTIVE"
+
+      const payload: AdvertisementCreateRequest = {
+        advertiser_name: formData.advertiser_name,
+        campaign_name: formData.campaign_name,
+        industry: formData.industry || undefined,
+        headline: formData.headline || undefined,
+        description: formData.description || undefined,
+        cta_label: formData.cta_label || undefined,
+        destination_url: formData.destination_url,
+        alt_text: formData.alt_text || undefined,
+        placement: formData.placement,
+        format: formData.format,
+        creative_image_url: creative_image_url || undefined,
+        mobile_image_url: mobile_image_url || undefined,
+        background: formData.background,
+        accent_color: formData.accent_color,
+        start_at: formData.start_at || undefined,
+        end_at: formData.end_at || undefined,
+        priority: Number(formData.priority) || 0,
+        status,
+      }
+
+      const ad = await adminApi.createAd(payload)
       setSuccess(true)
-
-      if (action === "activate") {
-        router.push(`/admin/ads/${ad.id}`)
-      } else if (action === "schedule") {
-        router.push(`/admin/ads/${ad.id}`)
-      } else {
-        setTimeout(() => router.push("/admin/ads"), 1500)
-      }
+      router.push(`/admin/ads/${ad.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Xəta baş verdi")
     } finally {
@@ -385,12 +385,12 @@ export default function AdminAdCreatePage() {
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100"
                   required
                 >
-                  <option value="FORMAT_970x90">970x90</option>
-                  <option value="FORMAT_160x600">160x600</option>
-                  <option value="FORMAT_120x600">120x600</option>
-                  <option value="FORMAT_300x250">300x250</option>
-                  <option value="FORMAT_728x90">728x90</option>
-                  <option value="FORMAT_320x100">320x100</option>
+                  <option value="970x90">970x90</option>
+                  <option value="160x600">160x600</option>
+                  <option value="120x600">120x600</option>
+                  <option value="300x250">300x250</option>
+                  <option value="728x90">728x90</option>
+                  <option value="320x100">320x100</option>
                   <option value="CUSTOM_SKIN">CUSTOM_SKIN</option>
                 </select>
               </div>

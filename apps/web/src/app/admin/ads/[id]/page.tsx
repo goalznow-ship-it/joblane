@@ -40,7 +40,7 @@ const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Aktiv",
   PAUSED: "Dayandırılıb",
   EXPIRED: "Vaxtı bitib",
-  ARCHIVED: "Arxivleşib",
+  ARCHIVED: "Arxivləşib",
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -62,12 +62,12 @@ const PLACEMENT_LABELS: Record<string, string> = {
 }
 
 const FORMAT_LABELS: Record<string, string> = {
-  FORMAT_970x90: "970x90",
-  FORMAT_160x600: "160x600",
-  FORMAT_120x600: "120x600",
-  FORMAT_300x250: "300x250",
-  FORMAT_728x90: "728x90",
-  FORMAT_320x100: "320x100",
+  "970x90": "970x90",
+  "160x600": "160x600",
+  "120x600": "120x600",
+  "300x250": "300x250",
+  "728x90": "728x90",
+  "320x100": "320x100",
   CUSTOM_SKIN: "CUSTOM_SKIN",
 }
 
@@ -100,6 +100,11 @@ export default function AdminAdDetailPage() {
 
   const [previewOpen, setPreviewOpen] = useState(false)
 
+  const [editForm, setEditForm] = useState<Record<string, string>>({})
+  const [desktopFile, setDesktopFile] = useState<File | null>(null)
+  const [mobileFile, setMobileFile] = useState<File | null>(null)
+  const [uploadingCreative, setUploadingCreative] = useState(false)
+
   const fetchAd = useCallback(() => {
     setLoading(true)
     setError("")
@@ -113,6 +118,28 @@ export default function AdminAdDetailPage() {
   useEffect(() => {
     fetchAd()
   }, [fetchAd])
+
+  useEffect(() => {
+    if (ad) {
+      setEditForm({
+        advertiser_name: ad.advertiser_name ?? "",
+        campaign_name: ad.campaign_name ?? "",
+        industry: ad.industry ?? "",
+        headline: ad.headline ?? "",
+        description: ad.description ?? "",
+        cta_label: ad.cta_label ?? "",
+        destination_url: ad.destination_url ?? "",
+        alt_text: ad.alt_text ?? "",
+        placement: ad.placement ?? "TOP_LEADERBOARD",
+        format: ad.format ?? "970x90",
+        background: ad.background ?? "blue",
+        accent_color: ad.accent_color ?? "#2563EB",
+        start_at: ad.start_at ? new Date(ad.start_at).toISOString().slice(0, 16) : "",
+        end_at: ad.end_at ? new Date(ad.end_at).toISOString().slice(0, 16) : "",
+        priority: String(ad.priority ?? 0),
+      })
+    }
+  }, [ad])
 
   useEffect(() => {
     adminApi
@@ -136,6 +163,49 @@ export default function AdminAdDetailPage() {
 
   const handlePreview = () => {
     setPreviewOpen(true)
+  }
+
+  const setEdit = (key: string, value: string) => {
+    setEditForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleCreativeUpload = async (file: File, mobile: boolean) => {
+    setUploadingCreative(true)
+    try {
+      const res = await adminApi.uploadAdCreative(file, mobile)
+      setEdit(mobile ? "mobile_image_url" : "creative_image_url", res.url)
+      if (mobile) setMobileFile(file)
+      else setDesktopFile(file)
+      alert("Kreativ uğurla yükləndi")
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Yükləmə uğursuz oldu")
+    } finally {
+      setUploadingCreative(false)
+    }
+  }
+
+  const handleUpdate = () => {
+    run(() =>
+      adminApi.updateAd(ad.id, {
+        advertiser_name: editForm.advertiser_name || undefined,
+        campaign_name: editForm.campaign_name || undefined,
+        industry: editForm.industry || undefined,
+        headline: editForm.headline || undefined,
+        description: editForm.description || undefined,
+        cta_label: editForm.cta_label || undefined,
+        destination_url: editForm.destination_url || undefined,
+        alt_text: editForm.alt_text || undefined,
+        placement: editForm.placement || undefined,
+        format: editForm.format || undefined,
+        background: editForm.background || undefined,
+        accent_color: editForm.accent_color || undefined,
+        start_at: editForm.start_at || undefined,
+        end_at: editForm.end_at || undefined,
+        priority: Number(editForm.priority) || 0,
+        creative_image_url: editForm.creative_image_url || ad.creative_image_url || undefined,
+        mobile_image_url: editForm.mobile_image_url || ad.mobile_image_url || undefined,
+      })
+    )
   }
 
   if (loading) {
@@ -304,65 +374,148 @@ export default function AdminAdDetailPage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="mb-5 text-sm font-bold text-slate-900">Reklamı redaktə et</h2>
               <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Kampaniya adı"
-                  defaultValue={ad.campaign_name}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input
+                    type="text"
+                    placeholder="Kampaniya adı"
+                    value={editForm.campaign_name ?? ""}
+                    onChange={(e) => setEdit("campaign_name", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Reklamverən adı"
+                    value={editForm.advertiser_name ?? ""}
+                    onChange={(e) => setEdit("advertiser_name", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Sənaye"
+                    value={editForm.industry ?? ""}
+                    onChange={(e) => setEdit("industry", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Başlıq"
+                    value={editForm.headline ?? ""}
+                    onChange={(e) => setEdit("headline", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <input
+                    type="url"
+                    placeholder="Hədəf URL"
+                    value={editForm.destination_url ?? ""}
+                    onChange={(e) => setEdit("destination_url", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="CTA etiketi"
+                    value={editForm.cta_label ?? ""}
+                    onChange={(e) => setEdit("cta_label", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+                <textarea
+                  placeholder="Təsvir"
+                  value={editForm.description ?? ""}
+                  onChange={(e) => setEdit("description", e.target.value)}
+                  rows={3}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
                 />
-                <input
-                  type="text"
-                  placeholder="Reklamverən adı"
-                  defaultValue={ad.advertiser_name}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
-                />
-                <input
-                  type="url"
-                  placeholder="Hədəf URL"
-                  defaultValue={ad.destination_url}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
-                />
-                <select
-                  defaultValue={ad.placement}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
-                >
-                  <option value="TOP_LEADERBOARD">TOP_LEADERBOARD</option>
-                  <option value="LEFT_SKIN">LEFT_SKIN</option>
-                  <option value="RIGHT_SKIN">RIGHT_SKIN</option>
-                  <option value="RIGHT_SIDEBAR">RIGHT_SIDEBAR</option>
-                  <option value="INLINE_FEED">INLINE_FEED</option>
-                  <option value="MOBILE_BANNER">MOBILE_BANNER</option>
-                </select>
-                <select
-                  defaultValue={ad.format}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
-                >
-                  <option value="FORMAT_970x90">970x90</option>
-                  <option value="FORMAT_160x600">160x600</option>
-                  <option value="FORMAT_120x600">120x600</option>
-                  <option value="FORMAT_300x250">300x250</option>
-                  <option value="FORMAT_728x90">728x90</option>
-                  <option value="FORMAT_320x100">320x100</option>
-                  <option value="CUSTOM_SKIN">CUSTOM_SKIN</option>
-                </select>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <select
+                    value={editForm.placement ?? ""}
+                    onChange={(e) => setEdit("placement", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  >
+                    <option value="TOP_LEADERBOARD">TOP_LEADERBOARD</option>
+                    <option value="LEFT_SKIN">LEFT_SKIN</option>
+                    <option value="RIGHT_SKIN">RIGHT_SKIN</option>
+                    <option value="RIGHT_SIDEBAR">RIGHT_SIDEBAR</option>
+                    <option value="INLINE_FEED">INLINE_FEED</option>
+                    <option value="MOBILE_BANNER">MOBILE_BANNER</option>
+                  </select>
+                  <select
+                    value={editForm.format ?? ""}
+                    onChange={(e) => setEdit("format", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  >
+                    <option value="970x90">970x90</option>
+                    <option value="160x600">160x600</option>
+                    <option value="120x600">120x600</option>
+                    <option value="300x250">300x250</option>
+                    <option value="728x90">728x90</option>
+                    <option value="320x100">320x100</option>
+                    <option value="CUSTOM_SKIN">CUSTOM_SKIN</option>
+                  </select>
+                  <input
+                    type="datetime-local"
+                    placeholder="Başlama tarixi"
+                    value={editForm.start_at ?? ""}
+                    onChange={(e) => setEdit("start_at", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <input
+                    type="datetime-local"
+                    placeholder="Bitmə tarixi"
+                    value={editForm.end_at ?? ""}
+                    onChange={(e) => setEdit("end_at", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Prioritet"
+                    value={editForm.priority ?? "0"}
+                    onChange={(e) => setEdit("priority", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                  <select
+                    value={editForm.background ?? "blue"}
+                    onChange={(e) => setEdit("background", e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                  >
+                    <option value="blue">Blue</option>
+                    <option value="navy">Navy</option>
+                    <option value="teal">Teal</option>
+                    <option value="slate">Slate</option>
+                  </select>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleCreativeUpload(file, false)
+                    }}
+                    disabled={uploadingCreative}
+                    className="w-full md:w-auto rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-600 file:mr-2 file:rounded-full file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700"
+                  />
+                  <span className="text-xs text-slate-400">Desktop kreativi yüklə</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleCreativeUpload(file, true)
+                    }}
+                    disabled={uploadingCreative}
+                    className="w-full md:w-auto rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-600 file:mr-2 file:rounded-full file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700"
+                  />
+                  <span className="text-xs text-slate-400">Mobile kreativi yüklə</span>
+                  {uploadingCreative && <Loader2 className="h-4 w-4 animate-spin text-[#2563EB]" />}
+                </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => run(() => adminApi.updateAd(ad.id, { campaign_name: (document.querySelector('input[placeholder="Kampaniya adı"]') as HTMLInputElement)?.value })).catch(() => {})}
-                    disabled={busy}
+                    onClick={handleUpdate}
+                    disabled={busy || uploadingCreative}
                     className="flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] disabled:opacity-50"
                   >
                     <Edit2 className="h-4 w-4" /> Yenilə
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm("Reklamı silmək istəyirsiniz? Bu əməliyyat geri qaytarıla bilməz.")) {
-                        // run(() => adminApi.deleteAd(ad.id)).then(() => router.push("/admin/ads")).catch(() => {})
-                      }
-                    }}
-                    disabled={busy}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                  >
-                    <Trash2 className="h-4 w-4" /> Sil
                   </button>
                 </div>
               </div>
@@ -413,6 +566,7 @@ export default function AdminAdDetailPage() {
           </div>
         </div>
 
+        {previewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-6" onClick={() => setPreviewOpen(false)}>
           <div className="w-full max-w-4xl rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
@@ -449,6 +603,7 @@ export default function AdminAdDetailPage() {
             </div>
           </div>
         </div>
+      )}
       </div>
     </div>
   )
