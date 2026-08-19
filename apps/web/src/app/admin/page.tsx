@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { adminApi, type DashboardData, type AdminMe } from "@/lib/admin-api"
+import { adminApi, type DashboardData, type AdminMe, type SystemStatus } from "@/lib/admin-api"
 import {
   Briefcase,
   Building2,
@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
     { label: "Təcili", value: jobs.urgent, icon: Flame, color: "text-red-600" },
   ]
 
-  const sys = [
+  const sys: { label: string; key: keyof SystemStatus; icon: React.ElementType }[] = [
     { label: "API", key: "api", icon: Server },
     { label: "PostgreSQL", key: "database", icon: Database },
     { label: "Redis", key: "redis", icon: Cpu },
@@ -169,7 +169,6 @@ export default function AdminDashboardPage() {
           <div className="space-y-3">
             {sys.map((s) => {
               const Icon = s.icon
-              const ok = system_status?.[s.key] === true
               const status = system_status?.[s.key]
               return (
                 <div key={s.key} className="flex items-center justify-between">
@@ -177,15 +176,17 @@ export default function AdminDashboardPage() {
                     <Icon className="h-4 w-4 text-slate-400" />
                     {s.label}
                   </div>
-                  {status === undefined ? (
-                    <span className="text-xs text-slate-400">məlumat yoxdur</span>
-                  ) : ok ? (
+                  {status === true ? (
                     <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
                       Aktiv
                     </span>
-                  ) : (
+                  ) : status === false ? (
                     <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-semibold text-red-700">
                       Xəta
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+                      Konfiqurasiya edilməyib
                     </span>
                   )}
                 </div>
@@ -193,7 +194,7 @@ export default function AdminDashboardPage() {
             })}
           </div>
           <div className="mt-4 border-t border-slate-100 pt-4 text-xs text-slate-400">
-            Son yenilənmə: {new Date().toLocaleTimeString("az-AZ")}
+            Son yenilənmə: {system_status?.checked_at ? new Date(system_status.checked_at as string).toLocaleString("az-AZ") : "—"}
           </div>
         </div>
       </div>

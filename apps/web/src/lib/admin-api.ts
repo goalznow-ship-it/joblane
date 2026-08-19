@@ -169,6 +169,14 @@ export interface AuditEntry {
   created_at: string
 }
 
+export interface SystemStatus {
+  api: boolean
+  database: boolean
+  redis: boolean
+  mail: boolean | null
+  checked_at: string
+}
+
 export interface DashboardData {
   jobs: { by_status: Record<string, number>; total: number; premium: number; featured: number; urgent: number }
   companies: { by_status: Record<string, number>; total: number }
@@ -178,7 +186,7 @@ export interface DashboardData {
   finance: Record<string, number>
   moderation_queue: AdminJob[]
   recent_audit: AuditEntry[]
-  system_status: Record<string, unknown>
+  system_status: SystemStatus
 }
 
 // Companies

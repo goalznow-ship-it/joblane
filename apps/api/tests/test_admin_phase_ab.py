@@ -32,7 +32,12 @@ async def test_dashboard_real_counts(client):
     assert body["users"]["total"] == 3
     assert body["users"]["admins"] == 2
     assert len(body["moderation_queue"]) == 6
-    assert body["system_status"]["postgres"] == "ok"
+    status = body["system_status"]
+    assert status["api"] is True
+    assert status["database"] is True
+    assert status["redis"] is True
+    assert status["mail"] in (True, False, None)
+    assert "checked_at" in status
 
 
 @pytest.mark.asyncio

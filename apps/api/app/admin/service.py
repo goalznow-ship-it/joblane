@@ -2109,27 +2109,41 @@ async def build_dashboard(db: AsyncSession, actor: User) -> DashboardResponse:
 
 async def system_status(db: AsyncSession) -> dict:
     import socket
-    from app.core.redis import get_redis
-    from app.core.config import settings
+    from datetime import datetime, timezone
 
-    result = {"api": "ok", "postgres": "ok", "redis": "ok", "worker": "offline", "mail": "offline"}
+    from app.core.config import settings
+    from app.core.redis import get_redis
+
+    result: dict = {"api": True, "database": False, "redis": False, "mail": None}
+
     try:
         await db.execute(text("SELECT 1"))
+        result["database"] = True
     except Exception:
-        result["postgres"] = "error"
+        result["database"] = False
+
     try:
         redis_client = await get_redis()
         await redis_client.ping()
+        result["redis"] = True
     except Exception:
-        result["redis"] = "error"
-    try:
-        with socket.create_connection((settings.worker_url.host, settings.worker_url.port), timeout=1.5):
-            result["worker"] = "ok"
-    except Exception:
-        result["worker"] = "offline"
-    try:
-        with socket.create_connection((settings.mail_host, settings.mail_port), timeout=1.5):
-            result["mail"] = "ok"
-    except Exception:
-        result["mail"] = "offline"
+        result["redis"] = False
+
+    if not settings.mail_host or settings.mail_host.lower() in ("none", "off", "disabled", "false"):
+        result["mail"] = None
+    else:
+        try:
+            with socket.create_connection((settings.mail_host, settings.mail_port), timeout=1.5):
+                result["mail"] = True
+        except Exception:
+            if settings.app_env == "development":
+                try:
+                    with socket.create_connection(("127.0.0.1", settings.mail_port), timeout=1.5):
+                        result["mail"] = True
+                except Exception:
+                    result["mail"] = False
+            else:
+                result["mail"] = False
+
+    result["checked_at"] = datetime.now(timezone.utc).isoformat()
     return result
