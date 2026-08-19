@@ -1,7 +1,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-const Card = (props) => {
+const Card = (props: React.HTMLAttributes<HTMLDivElement>) => {
   const { className, ...rest } = props
   return (
     <div
@@ -13,7 +13,7 @@ const Card = (props) => {
 
 Card.displayName = "Card"
 
-const CardHeader = (props) => {
+const CardHeader = (props: React.HTMLAttributes<HTMLDivElement>) => {
   const { className, ...rest } = props
   return (
     <div className={cn("flex flex-col space-y-1.5 p-6", className)} {...rest} />
@@ -21,19 +21,19 @@ const CardHeader = (props) => {
 }
 CardHeader.displayName = "CardHeader"
 
-const CardTitle = (props) => {
+const CardTitle = (props: React.HTMLAttributes<HTMLHeadingElement>) => {
   const { className, ...rest } = props
   return <h3 className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...rest} />
 }
 CardTitle.displayName = "CardTitle"
 
-const CardDescription = (props) => {
+const CardDescription = (props: React.HTMLAttributes<HTMLParagraphElement>) => {
   const { className, ...rest } = props
   return <p className={cn("text-sm text-muted-foreground", className)} {...rest} />
 }
 CardDescription.displayName = "CardDescription"
 
-const CardContent = (props) => {
+const CardContent = (props: React.HTMLAttributes<HTMLDivElement>) => {
   const { className, ...rest } = props
   return (
     <div className={cn("p-6 pt-0", className)} {...rest} />
@@ -41,7 +41,7 @@ const CardContent = (props) => {
 }
 CardContent.displayName = "CardContent"
 
-const CardFooter = (props) => {
+const CardFooter = (props: React.HTMLAttributes<HTMLDivElement>) => {
   const { className, ...rest } = props
   return (
     <div className={cn("flex items-center p-6 pt-0", className)} {...rest} />

@@ -47,8 +47,6 @@ const FORMAT_LABELS: Record<string, string> = {
   CUSTOM_SKIN: "CUSTOM_SKIN",
 }
 
-const PAGE_SIZE = 15
-
 export default function AdminAdsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -62,6 +60,16 @@ export default function AdminAdsPage() {
   const [data, setData] = useState<AdvertisementListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
+  const run = async (fn: () => Promise<any>) => {
+    try {
+      await fn()
+      fetchList()
+    } catch (err) {
+      const detail = (err as any)?.detail
+      alert(typeof detail === "string" ? detail : "Əməliyyat uğursuz oldu")
+    }
+  }
 
   const fetchList = useCallback(() => {
     setLoading(true)
@@ -307,53 +315,4 @@ export default function AdminAdsPage() {
       </div>
     </div>
   )
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleString("az-AZ", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  ALL: "Hamısı",
-  DRAFT: "Qaralama",
-  SCHEDULED: "Planlaşdırılıb",
-  ACTIVE: "Aktiv",
-  PAUSED: "Dayandırılıb",
-  EXPIRED: "Vaxtı bitib",
-  ARCHIVED: "Arxivleşib",
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-600",
-  SCHEDULED: "bg-blue-100 text-blue-700",
-  ACTIVE: "bg-emerald-100 text-emerald-700",
-  PAUSED: "bg-orange-100 text-orange-700",
-  EXPIRED: "bg-slate-100 text-slate-500",
-  ARCHIVED: "bg-slate-100 text-slate-500",
-}
-
-const PLACEMENT_LABELS: Record<string, string> = {
-  TOP_LEADERBOARD: "TOP_LEADERBOARD",
-  LEFT_SKIN: "LEFT_SKIN",
-  RIGHT_SKIN: "RIGHT_SKIN",
-  RIGHT_SIDEBAR: "RIGHT_SIDEBAR",
-  INLINE_FEED: "INLINE_FEED",
-  MOBILE_BANNER: "MOBILE_BANNER",
-}
-
-const FORMAT_LABELS: Record<string, string> = {
-  FORMAT_970x90: "970x90",
-  FORMAT_160x600: "160x600",
-  FORMAT_120x600: "120x600",
-  FORMAT_300x250: "300x250",
-  FORMAT_728x90: "728x90",
-  FORMAT_320x100: "320x100",
-  CUSTOM_SKIN: "CUSTOM_SKIN",
 }

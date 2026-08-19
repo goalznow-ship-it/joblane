@@ -153,10 +153,6 @@ export default function AdminAdDetailPage() {
   const can = (perm: string) => me?.permissions?.includes(perm) ?? false
   const canManage = can("ads.manage")
 
-  const handlePreview = () => {
-    setPreviewOpen(true)
-  }
-
   return (
     <div className="space-y-6">
       <Link href="/admin/ads" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800">
@@ -456,57 +452,4 @@ export default function AdminAdDetailPage() {
       </div>
     </div>
   )
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleString("az-AZ", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-function defaultEndDate(days: number): string {
-  const d = new Date(Date.now() + days * 86400000)
-  return d.toISOString().slice(0, 10)
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Qaralama",
-  SCHEDULED: "Planlaşdırılıb",
-  ACTIVE: "Aktiv",
-  PAUSED: "Dayandırılıb",
-  EXPIRED: "Vaxtı bitib",
-  ARCHIVED: "Arxivleşib",
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-600",
-  SCHEDULED: "bg-blue-100 text-blue-700",
-  ACTIVE: "bg-emerald-100 text-emerald-700",
-  PAUSED: "bg-orange-100 text-orange-700",
-  EXPIRED: "bg-slate-100 text-slate-500",
-  ARCHIVED: "bg-slate-100 text-slate-500",
-}
-
-const PLACEMENT_LABELS: Record<string, string> = {
-  TOP_LEADERBOARD: "TOP_LEADERBOARD",
-  LEFT_SKIN: "LEFT_SKIN",
-  RIGHT_SKIN: "RIGHT_SKIN",
-  RIGHT_SIDEBAR: "RIGHT_SIDEBAR",
-  INLINE_FEED: "INLINE_FEED",
-  MOBILE_BANNER: "MOBILE_BANNER",
-}
-
-const FORMAT_LABELS: Record<string, string> = {
-  FORMAT_970x90: "970x90",
-  FORMAT_160x600: "160x600",
-  FORMAT_120x600: "120x600",
-  FORMAT_300x250: "300x250",
-  FORMAT_728x90: "728x90",
-  FORMAT_320x100: "320x100",
-  CUSTOM_SKIN: "CUSTOM_SKIN",
 }

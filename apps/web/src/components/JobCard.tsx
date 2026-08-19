@@ -71,7 +71,7 @@ export function JobCard({ job, variant = "default", showCompany = true, onBookma
           <div className="flex flex-wrap gap-2 mb-4">
             {job.skills ? (
               <div>
-                {job.skills.slice(0, 5).map((skill) => (
+                {job.skills.slice(0, 5).map((skill: string) => (
                   <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
                 ))}
                 {job.skills.length > 5 && (

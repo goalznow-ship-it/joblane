@@ -130,20 +130,22 @@ export default function AdminAdCreatePage() {
   }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type, files } = e.target
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    const { name, value, type } = target
+    const files = target instanceof HTMLInputElement ? target.files : undefined
     setFormData(prev => ({
       ...prev,
       [name]: type === "file" ? files?.[0] || null : value,
     }))
-    if (name === "creative_image" && e.target.files?.[0]) {
+    if (name === "creative_image" && files?.[0]) {
       const reader = new FileReader()
       reader.onload = (e) => setDesktopPreview(e.target?.result as string)
-      reader.readAsDataURL(e.target.files[0])
+      reader.readAsDataURL(files[0])
     }
-    if (name === "mobile_image" && e.target.files?.[0]) {
+    if (name === "mobile_image" && files?.[0]) {
       const reader = new FileReader()
       reader.onload = (e) => setMobilePreview(e.target?.result as string)
-      reader.readAsDataURL(e.target.files[0])
+      reader.readAsDataURL(files[0])
     }
   }
 
@@ -237,7 +239,7 @@ export default function AdminAdCreatePage() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
           {error}
         </div>
-      }
+      )}
 
       {success && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700" role="status">

@@ -391,7 +391,7 @@ export default function HomePage() {
               </div>
               <VacancyList
                 jobs={shownLatest}
-                inlineAd={inlineFeed}
+                inlineAd={inlineFeed || undefined}
                 adEvery={8}
                 onSave={toggleSave}
                 savedIds={saved}
@@ -516,7 +516,7 @@ export default function HomePage() {
         </main>
 
         <RightRail
-          ad={rightRailAd}
+          ad={rightRailAd || undefined}
           featuredCompany={featuredCompany}
           trendingCategories={trendingCategories}
         />

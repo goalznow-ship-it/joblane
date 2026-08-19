@@ -6,10 +6,16 @@ import { Footer } from "@/components/Footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { FileText, User, Briefcase, Target, Award, Star, ArrowRight, Upload, Download, Edit, Eye, Settings, Plus } from "lucide-react"
+import { FileText, User, Briefcase, Target, Award, Star, ArrowRight, Upload, Download, Edit, Eye, Settings, Plus, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function ResumeCreatePage() {
+  const templates = [
+    { name: "Modern", desc: "Təmiz, minimalist dizayn" },
+    { name: "Classic", desc: "Klassik, peşəkar görünüş" },
+    { name: "Creative", desc: "Yaradıcı, unikal stil" },
+  ]
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -96,13 +102,13 @@ export default function ResumeCreatePage() {
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[User, Target, Briefcase, Award, Star, FileText, Settings, Shield].map((icon, i) => (
+{[User, Target, Briefcase, Award, Star, FileText, Settings, Shield].map((Icon, i) => (
                 <div key={i} className="p-6 bg-background rounded-xl border border-border/50 hover:border-primary/50 transition-colors">
                   <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary mb-4">
-                    <icon className="h-6 w-6" />
+                    <Icon className="h-6 w-6" />
                   </div>
                   <h3 className="font-semibold mb-2">Bölmə adı</h3>
-                  <p className="text-sm text-muted-foreground">Açıklama</p>
+                  <p className="text-sm text-muted-foreground">Açıqlama</p>
                 </div>
               ))}
             </div>
@@ -197,8 +203,8 @@ export default function ResumeCreatePage() {
                 Müasir, peşəkar və ATS-dostu şablonlardan birini seçin.
               </p>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
- {[Modern, Classic, Creative].map((item, i) => (
+<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+  {templates.map((item, i) => (
                 <div key={i} className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br bg-[from-blue-500_to-purple-600] hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute inset-0 p-6 flex flex-col justify-end">
