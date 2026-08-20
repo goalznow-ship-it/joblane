@@ -40,7 +40,7 @@ const groups: {
   {
     title: "İşəgötürən",
     items: [
-      { href: "/employer/post-job", label: "Elan yerləşdir", icon: Plus },
+      { href: "/employer/onboarding", label: "Elan yerləşdir", icon: Plus },
       { href: "/employer/dashboard", label: "Şirkət kabineti", icon: LayoutDashboard },
     ],
   },

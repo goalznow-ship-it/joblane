@@ -27,6 +27,7 @@ from app.core.database import Base
 from app.auth.models import User, UserSession, EmailVerificationToken, PasswordResetToken
 from app.admin.models import (
     Company,
+    CompanyMembership,
     JobCategory,
     Region,
     Job,

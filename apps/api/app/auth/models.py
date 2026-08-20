@@ -61,6 +61,12 @@ class User(Base):
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     email_verification_tokens = relationship("EmailVerificationToken", back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+    company_memberships = relationship(
+        "CompanyMembership",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    applications = relationship("Application", back_populates="candidate")
     
     def __repr__(self):
         return f"<User id={self.id} email={self.email} status={self.status}>"

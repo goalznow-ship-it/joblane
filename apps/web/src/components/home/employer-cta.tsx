@@ -21,7 +21,7 @@ export default function EmployerCTA() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
           <Link
-            href="/employer/post-job"
+            href="/employer/onboarding"
             className="flex items-center gap-3 rounded-lg bg-primary text-primary-foreground px-6 py-3 text-lg transition-colors"
           >
             <Building2 className="h-5 w-5" aria-hidden="true" />

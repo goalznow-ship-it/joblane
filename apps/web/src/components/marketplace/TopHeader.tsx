@@ -61,7 +61,7 @@ export default function TopHeader() {
             Daxil ol
           </Link>
           <Link
-            href="/employer/post-job"
+            href="/employer/onboarding"
             className="rounded-lg bg-brand-500 px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-brand-600 hover:shadow active:scale-[0.98]"
           >
             + Elan yerləşdir

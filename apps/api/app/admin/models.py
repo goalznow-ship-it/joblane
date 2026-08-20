@@ -31,6 +31,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     JSON,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -134,6 +135,19 @@ class ApplicationStatus(enum.Enum):
     WITHDRAWN = "WITHDRAWN"
 
 
+class CompanyMemberRole(enum.Enum):
+    OWNER = "OWNER"
+    ADMIN = "ADMIN"
+    RECRUITER = "RECRUITER"
+    VIEWER = "VIEWER"
+
+
+class CompanyMembershipStatus(enum.Enum):
+    ACTIVE = "ACTIVE"
+    INVITED = "INVITED"
+    SUSPENDED = "SUSPENDED"
+
+
 class TrainingFormat(enum.Enum):
     ONLINE = "ONLINE"
     OFFLINE = "OFFLINE"
@@ -180,6 +194,31 @@ class Company(Base):
     internships = relationship("Internship", back_populates="company")
     trainings = relationship("Training", back_populates="provider")
     industry_rel = relationship("Industry")
+    memberships = relationship(
+        "CompanyMembership",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
+
+
+class CompanyMembership(Base):
+    """Membership linking a user to a company with an employer role."""
+
+    __tablename__ = "company_memberships"
+    __table_args__ = (
+        UniqueConstraint("company_id", "user_id", name="uq_company_membership_company_user"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(Enum(CompanyMemberRole, name="company_member_role"), default=CompanyMemberRole.VIEWER, nullable=False)
+    status = Column(Enum(CompanyMembershipStatus, name="company_membership_status"), default=CompanyMembershipStatus.ACTIVE, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
+
+    company = relationship("Company", back_populates="memberships")
+    user = relationship("User", back_populates="company_memberships")
 
 
 class JobCategory(Base):
@@ -283,6 +322,7 @@ class Job(Base):
     category = relationship("JobCategory")
     region = relationship("Region")
     industry_rel = relationship("Industry")
+    applications = relationship("Application", back_populates="job")
     moderation_history = relationship(
         "JobModerationHistory",
         back_populates="job",
@@ -519,6 +559,9 @@ class Application(Base):
     applied_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
+
+    job = relationship("Job", back_populates="applications")
+    candidate = relationship("User", back_populates="applications")
 
 
 class AuditLog(Base):

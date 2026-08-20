@@ -17,9 +17,9 @@ const footerNavigation = {
     { name: "CV yarat", href: "/resume/create" },
   ],
   "İşəgötürənlər üçün": [
-    { name: "Elanləxdir", href: "/employer/post-job" },
+    { name: "Elanləxdir", href: "/employer/onboarding" },
     { name: "Namizəd bazası", href: "/employer/search" },
-    { name: "Qiymətlər", href: "/employer/pricing" },
+    { name: "Qiymətlər", href: "/employer" },
   ],
   "Dəstək": [
     { name: "Yardım", href: "/help" },

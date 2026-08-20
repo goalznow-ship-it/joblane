@@ -11,11 +11,11 @@ const footerNavigation = {
     { name: "Maaş məlumatları", href: "/salaries" },
   ],
   "İşəgötürənlər üçün": [
-    { name: "Elan yerləşdir", href: "/employer/post-job" },
+    { name: "Elan yerləşdir", href: "/employer/onboarding" },
     { name: "İşəgötürən profili", href: "/employer/profile" },
     { name: "Namizəd axtar", href: "/employer/search" },
     { name: "Marka səhifəsi yarat", href: "/employer/branding" },
-    { name: "Qiymətləndirmə", href: "/employer/pricing" },
+    { name: "Qiymətləndirmə", href: "/employer" },
   ],
   "Şirkət haqqında": [
     { name: "Bizim haqqımızda", href: "/about" },

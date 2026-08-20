@@ -548,7 +548,7 @@ export default function HomePage() {
                 </div>
               </Link>
               <Link
-                href="/employer/post-job"
+                href="/employer/onboarding"
                 className="group flex items-center gap-4 rounded-xl border border-border bg-white p-4 transition-all duration-150 hover:border-brand-200 hover:shadow-sm"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600 transition-colors group-hover:bg-accent-600 group-hover:text-white">

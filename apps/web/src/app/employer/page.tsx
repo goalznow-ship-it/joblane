@@ -37,7 +37,7 @@ export default function EmployerPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link href="/employer/post-job">
+                <Link href="/employer/onboarding">
                   <Button size="lg" className="px-8 py-3 text-lg w-full sm:w-auto">
                     <Briefcase className="mr-2 h-5 w-5" aria-hidden="true" />
                     Elan yerləşdir
@@ -175,13 +175,13 @@ export default function EmployerPage() {
                 İlk iş elanınızı pulsuz dərc edin. Ödənişsiz sınaq müddəti, heç bir öhdəlik yoxdur.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link href="/employer/post-job">
+                <Link href="/employer/onboarding">
                   <Button size="lg" className="bg-primary-foreground text-primary px-8 py-3 text-lg w-full sm:w-auto">
                     <Briefcase className="mr-2 h-5 w-5" aria-hidden="true" />
                     İlk elanı pulsuz dərc et
                   </Button>
                 </Link>
-                <Link href="/employer/pricing">
+                <Link href="/auth/register?intent=employer">
                   <Button variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 px-8 py-3 text-lg w-full sm:w-auto">
                     Qiymətlərə bax
                   </Button>
@@ -218,7 +218,7 @@ export default function EmployerPage() {
               Minlərlə şirkətlər Joblane ilə komandalarını genişləndirmiştir. Siz də onlara qoşulun.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/employer/post-job">
+              <Link href="/employer/onboarding">
                 <Button size="lg" className="px-8 py-3 text-lg w-full sm:w-auto">
                   <Briefcase className="mr-2 h-5 w-5" aria-hidden="true" />
                   İlk elanı pulsuz dərc et
