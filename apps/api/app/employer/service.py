@@ -36,6 +36,7 @@ from app.admin.models import (
 )
 from app.admin.audit import record_audit
 from app.auth.models import User
+from app.candidate.models import ApplicationHistory
 from app.employer.deps import EmployerContext, EmployerError
 from app.employer.schemas import (
     ApplicationOut,
@@ -795,6 +796,7 @@ async def update_application_status(
     app: Application,
     new_status: str,
     request: Request,
+    note: Optional[str] = None,
 ) -> Application:
     current = app.status.value
     allowed = APPLICATION_TRANSITIONS.get(current, set())
@@ -807,6 +809,16 @@ async def update_application_status(
     before = {"status": app.status.value}
     app.status = ApplicationStatus(new_status)
     app.updated_at = utcnow()
+
+    history = ApplicationHistory(
+        application_id=app.id,
+        from_status=before["status"],
+        to_status=new_status,
+        changed_by_role="EMPLOYER",
+        changed_by_id=ctx.user.id,
+        note=note,
+    )
+    db.add(history)
 
     await record_audit(
         db,

@@ -28,6 +28,7 @@ import EmptyState from "@/components/marketplace/EmptyState"
 import { activeApi } from "@/lib/api"
 import type { Job } from "@joblane/contracts"
 import { workModeLabel } from "@/components/marketplace/VacancyRow"
+import { ApplyBox } from "@/components/jobs/ApplyBox"
 
 function formatSalary(job: Job): string {
   if (job.salaryMin == null && job.salaryMax == null) return "Maaş göstərilməyib"
@@ -276,6 +277,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ slug: stri
                   </div>
 
                   <aside className="space-y-5">
+                    <ApplyBox jobId={job.id} jobSlug={job.slug} jobTitle={job.title} />
+
                     <section className="rounded-xl border border-border bg-white p-4">
                       <div className="mb-3 flex items-center gap-2">
                         <Wallet className="h-4 w-4 text-brand-500" />

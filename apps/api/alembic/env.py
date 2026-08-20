@@ -37,6 +37,14 @@ from app.admin.models import (
     Application,
     AuditLog,
 )
+from app.candidate.models import (
+    CandidateProfile,
+    CandidateExperience,
+    CandidateEducation,
+    CandidateResume,
+    SavedJob,
+    ApplicationHistory,
+)
 
 target_metadata = Base.metadata
 

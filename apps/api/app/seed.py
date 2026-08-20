@@ -34,6 +34,7 @@ from app.admin.models import (
     AdPlacement,
     AdFormat,
 )
+from app.candidate import models as candidate_models  # noqa: F401  (register candidate tables on Base)
 
 NOW = datetime.now(timezone.utc)
 

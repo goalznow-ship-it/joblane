@@ -301,6 +301,6 @@ async def update_application_status(
     _: bool = Depends(csrf_protection),
 ) -> ApplicationOut:
     app = await service.get_application_or_404(db, ctx, application_id)
-    app = await service.update_application_status(db, ctx, app, data.status, request)
+    app = await service.update_application_status(db, ctx, app, data.status, request, note=data.note)
     await db.commit()
     return service._application_to_out(app)

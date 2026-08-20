@@ -323,6 +323,7 @@ class Job(Base):
     region = relationship("Region")
     industry_rel = relationship("Industry")
     applications = relationship("Application", back_populates="job")
+    saved_jobs = relationship("SavedJob", back_populates="job", cascade="all, delete-orphan")
     moderation_history = relationship(
         "JobModerationHistory",
         back_populates="job",
@@ -556,12 +557,20 @@ class Application(Base):
     candidate_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     status = Column(Enum(ApplicationStatus, name="application_status"), default=ApplicationStatus.SUBMITTED, nullable=False, index=True)
     cover_letter = Column(Text)
+    resume_id = Column(UUID(as_uuid=True), ForeignKey("candidate_resumes.id", ondelete="SET NULL"))
     applied_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
 
     job = relationship("Job", back_populates="applications")
     candidate = relationship("User", back_populates="applications")
+    resume = relationship("CandidateResume")
+    history = relationship(
+        "ApplicationHistory",
+        back_populates="application",
+        cascade="all, delete-orphan",
+        order_by="ApplicationHistory.created_at.asc()",
+    )
 
 
 class AuditLog(Base):

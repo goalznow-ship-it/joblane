@@ -1,5 +1,6 @@
 import asyncio
 import os
+import secrets
 import uuid
 
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://joblane:joblane@localhost:5433/joblane_test"
@@ -18,7 +19,9 @@ from app.admin.models import Job, Company, JobCategory, Region, JobStatus, Audit
 
 ADMIN_EMAIL = "admin@joblane.az"
 MODERATOR_EMAIL = "moderator@joblane.az"
-PASSWORD = "TestSeedPass!23456"
+# Test credentials are never hardcoded: use TEST_PASSWORD from the environment
+# when set, otherwise generate a fresh random password for this run.
+PASSWORD = os.environ.get("TEST_PASSWORD") or secrets.token_urlsafe(18)
 
 
 @pytest_asyncio.fixture(autouse=True)

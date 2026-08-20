@@ -2,12 +2,16 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, Briefcase, Building2, FolderKanban, FileText, User, LogIn, UserPlus, Menu as MenuIcon, ChevronDown, Globe } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { Menu, X, Briefcase, Building2, FolderKanban, LogIn, UserPlus, Menu as MenuIcon, ChevronDown, Globe, LayoutDashboard, Building2 as BuildingIcon, ShieldCheck, LogOut, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { authApi, ApiError } from "@/lib/api"
+import { candidateApi } from "@/lib/candidate-api"
+import { employerApi } from "@/lib/employer-api"
+import { adminApi } from "@/lib/admin-api"
 
 const navigation = [
   { name: "Vakansiyalar", href: "/jobs", icon: Briefcase },
@@ -15,10 +19,75 @@ const navigation = [
   { name: "Kateqoriyalar", href: "/categories", icon: FolderKanban },
 ]
 
+type PortalAccess = {
+  candidate: boolean
+  employer: boolean
+  admin: boolean
+}
+
 export function Header() {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
-  const [userMenuOpen, setUserMenuOpen] = React.useState(false)
+  const [authChecked, setAuthChecked] = React.useState(false)
+  const [authenticated, setAuthenticated] = React.useState(false)
+  const [email, setEmail] = React.useState("")
+  const [access, setAccess] = React.useState<PortalAccess>({ candidate: false, employer: false, admin: false })
+  const [loggingOut, setLoggingOut] = React.useState(false)
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    const probeAccess = async (): Promise<PortalAccess> => {
+      const result: PortalAccess = { candidate: false, employer: false, admin: false }
+      await Promise.all([
+        candidateApi.me().then(() => { result.candidate = true }).catch(() => {}),
+        employerApi.me().then(() => { result.employer = true }).catch(() => {}),
+        adminApi.me().then(() => { result.admin = true }).catch(() => {}),
+      ])
+      return result
+    }
+
+    authApi
+      .me()
+      .then(async (me) => {
+        if (cancelled) return
+        setAuthenticated(true)
+        setEmail(me.email)
+        const portalAccess = await probeAccess()
+        if (cancelled) return
+        setAccess(portalAccess)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (!(err instanceof ApiError && err.status === 401)) {
+          // non-401 (e.g. network) — keep default unauthenticated UI
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await authApi.logout()
+    } catch {
+      // ignore
+    }
+    router.replace("/")
+  }
+
+  const portalLinks = [
+    ...(access.candidate ? [{ name: "Namizəd paneli", href: "/candidate/dashboard" }] : []),
+    ...(access.employer ? [{ name: "İşəgötürən paneli", href: "/employer/dashboard" }] : []),
+    ...(access.admin ? [{ name: "Admin paneli", href: "/admin" }] : []),
+  ]
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -66,15 +135,69 @@ export function Header() {
               </button>
             </div>
 
-            {/* Auth Buttons */}
-            <div className="flex items-center gap-3">
-              <Link href="/auth/login">
-                <Button variant="ghost" size="sm">Daxil ol</Button>
-              </Link>
-              <Link href="/auth/register">
-                <Button size="sm">Qeydiyyat</Button>
-              </Link>
-            </div>
+            {/* Auth Area */}
+            {!authChecked ? (
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : authenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-accent" aria-label="Hesab menyusu">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="" alt="" />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                        {(email || "U").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5">
+                    <p className="truncate text-sm font-semibold text-foreground">{email}</p>
+                    <p className="truncate text-xs text-muted-foreground">Daxil olmusunuz</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  {portalLinks.map((link) => (
+                    <DropdownMenuItem key={link.href} asChild>
+                      <Link href={link.href} className="flex items-center gap-2 cursor-pointer">
+                        {link.name === "Namizəd paneli" && <LayoutDashboard className="h-4 w-4" />}
+                        {link.name === "İşəgötürən paneli" && <BuildingIcon className="h-4 w-4" />}
+                        {link.name === "Admin paneli" && <ShieldCheck className="h-4 w-4" />}
+                        {link.name}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/jobs" className="flex items-center gap-2 cursor-pointer">
+                      <Briefcase className="h-4 w-4" />
+                      Vakansiyalara bax
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    className="cursor-pointer"
+                    onClick={handleLogout}
+                  >
+                    <span className="flex w-full items-center gap-2 text-red-600">
+                      {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                      Çıxış
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link href="/auth/login">
+                  <Button variant="ghost" size="sm">Daxil ol</Button>
+                </Link>
+                <Link href="/auth/register">
+                  <Button size="sm">Qeydiyyat</Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -128,22 +251,50 @@ export function Header() {
                   </Link>
                 ))}
                 <hr className="border-border" />
-                <Link
-                  href="/auth/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                >
-                  <LogIn className="h-5 w-5" aria-hidden="true" />
-                  Daxil ol
-                </Link>
-                <Link
-                  href="/auth/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-primary hover:bg-primary/10 transition-colors"
-                >
-                  <UserPlus className="h-5 w-5" aria-hidden="true" />
-                  Qeydiyyat
-                </Link>
+                {authenticated ? (
+                  <>
+                    {portalLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                      >
+                        <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
+                        {link.name}
+                      </Link>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        handleLogout()
+                      }}
+                      className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-red-600 hover:bg-accent transition-colors"
+                    >
+                      <LogOut className="h-5 w-5" aria-hidden="true" />
+                      Çıxış
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    >
+                      <LogIn className="h-5 w-5" aria-hidden="true" />
+                      Daxil ol
+                    </Link>
+                    <Link
+                      href="/auth/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <UserPlus className="h-5 w-5" aria-hidden="true" />
+                      Qeydiyyat
+                    </Link>
+                  </>
+                )}
               </nav>
             </div>
           </div>

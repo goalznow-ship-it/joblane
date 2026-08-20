@@ -145,7 +145,6 @@ def upgrade() -> None:
     op.add_column("advertisements", sa.Column("creative_height", sa.Integer()))
 
     # Add additional user fields for session management
-    op.add_column("users", sa.Column("last_login_at", sa.DateTime(timezone=True)))
     op.add_column("users", sa.Column("failed_login_attempts", sa.Integer(), server_default="0"))
     op.add_column("users", sa.Column("locked_until", sa.DateTime(timezone=True)))
 
