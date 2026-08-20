@@ -3,24 +3,22 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
-import { CompanyCard } from "@/components/CompanyCard"
+import { CompanyCard, CompanyCardSkeleton } from "@/components/CompanyCard"
 import { SectionHeaders } from "@/components/SectionHeader"
 import { SearchBar } from "@/components/SearchBar"
 import { activeApi } from "@/lib/api"
-import { Search, Building2, Users, MapPin, Filter, X, ChevronDown } from "lucide-react"
+import type { Company, Industry } from "@joblane/contracts"
+import { Search, Building2, Filter, X, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { CompanyCardSkeleton } from "@/components/CompanyCard"
 
 export default function CompaniesPage() {
-  const [companies, setCompanies] = useState<any[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [industries, setIndustries] = useState<Industry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -28,7 +26,6 @@ export default function CompaniesPage() {
     keyword: "",
     location: "",
     industry: "",
-    size: "",
     verified: false,
     page: 1,
     limit: 20,
@@ -36,15 +33,29 @@ export default function CompaniesPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [activeFilterCount, setActiveFilterCount] = useState(0)
 
+  useEffect(() => {
+    activeApi.getIndustries().then(setIndustries).catch(() => setIndustries([]))
+  }, [])
+
   const fetchCompanies = async () => {
     setLoading(true)
+    setError(null)
     try {
-      const response = await activeApi.getCompanies(page, filters.limit)
+      const response = await activeApi.getCompanies({
+        keyword: filters.keyword,
+        location: filters.location,
+        industry: filters.industry,
+        verified: filters.verified,
+        page: filters.page,
+        limit: filters.limit,
+        sort: "jobs_desc",
+      })
       setCompanies(response.data)
       setTotal(response.meta.total)
       setTotalPages(response.meta.totalPages)
-    } catch (error) {
-      console.error("Failed to fetch companies:", error)
+    } catch (err) {
+      console.error("Failed to fetch companies:", err)
+      setError("Şirkət məlumatları yüklənə bilmədi. Zəhmət olmasa yenidən cəhd edin.")
     } finally {
       setLoading(false)
     }
@@ -52,14 +63,13 @@ export default function CompaniesPage() {
 
   useEffect(() => {
     fetchCompanies()
-  }, [page, filters])
+  }, [filters])
 
   const countActiveFilters = () => {
     let count = 0
     if (filters.keyword) count++
     if (filters.location) count++
     if (filters.industry) count++
-    if (filters.size) count++
     if (filters.verified) count++
     return count
   }
@@ -77,7 +87,6 @@ export default function CompaniesPage() {
       keyword: "",
       location: "",
       industry: "",
-      size: "",
       verified: false,
       page: 1,
       limit: 20,
@@ -97,7 +106,7 @@ export default function CompaniesPage() {
             <div className="max-w-3xl">
               <h1 className="text-3xl sm:text-4xl font-bold mb-2">Şirkətlər</h1>
               <p className="text-muted-foreground text-lg">
-                Azərbaycanın önde gələn şirkətlərini kəşf edin, onların vaxtçı vakansiyalarını araşdırın
+                Azərbaycanın öndə gələn şirkətlərini kəşf edin, onların aktiv vakansiyalarını araşdırın
               </p>
             </div>
           </div>
@@ -128,39 +137,20 @@ export default function CompaniesPage() {
             <div className="hidden lg:block lg:w-64">
               <div className="sticky top-24 space-y-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">İndistriya</label>
+                  <label className="block text-sm font-medium mb-2">İndustriya</label>
                   <Select value={filters.industry} onValueChange={(v: string) => handleFilterChange("industry", v)}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Bütün indistriyalar" />
+                      <SelectValue placeholder="Bütün industriyalar" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Bütün indistriyalar</SelectItem>
-                      <SelectItem value="banking">Bankçılıq və Maliyyə</SelectItem>
-                      <SelectItem value="telecom">Telekommunikasiya</SelectItem>
-                      <SelectItem value="oil-gas">Neft və Qaz</SelectItem>
-                      <SelectItem value="retail">Mağazacılıq</SelectItem>
-                      <SelectItem value="tech">İT</SelectItem>
-                      <SelectItem value="construction">Tikinti</SelectItem>
-                      <SelectItem value="aviation">Aviasiya</SelectItem>
+                      <SelectItem value="">Bütün industriyalar</SelectItem>
+                      {industries.map(industry => (
+                        <SelectItem key={industry.id} value={industry.slug}>
+                          {industry.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Şirkət ölçüsü</label>
-                  <div className="space-y-2">
-                    {["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"].map(size => (
-                      <label key={size} className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={filters.size === size}
-                          onCheckedChange={checked => handleFilterChange("size", checked ? size : "")}
-                        />
-                        <span className="text-sm">{size} işçi</span>
-                      </label>
-                    ))}
-                  </div>
                 </div>
 
                 <Separator />
@@ -202,6 +192,16 @@ export default function CompaniesPage() {
               </div>
             </div>
 
+            {error && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
+                <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
+                <p className="mt-3 text-sm font-semibold text-amber-800">{error}</p>
+                <Button variant="outline" onClick={fetchCompanies} className="mt-3">
+                  Yenidən cəhd et
+                </Button>
+              </div>
+            )}
+
             {loading ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <CompanyCardSkeleton key={i} />)}
@@ -212,7 +212,7 @@ export default function CompaniesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14m14 0h2m-2 0h-5m-9 0H3m2 0h5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
                 <h3 className="mt-4 text-lg font-medium text-foreground">Şirkət tapılmadı</h3>
-                <p className="mt-2 text-muted-conditional">Filtrləmə ölçütlerinizi dəyişdirib yenidən cəhd edin</p>
+                <p className="mt-2 text-muted-foreground">Filtrləmə meyarlarınızı dəyişib yenidən cəhd edin</p>
                 <Button variant="outline" onClick={clearFilters} className="mt-4">
                   <X className="mr-2 h-4 w-4" aria-hidden="true" />
                   Filtrləri təmizlə

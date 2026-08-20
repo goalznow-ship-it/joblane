@@ -49,6 +49,10 @@ export function employmentTypeLabel(type: Job["employmentType"]): string {
       return "Staj"
     case "freelance":
       return "Frilans"
+    case "temporary":
+      return "Müvəqqəti"
+    case "seasonal":
+      return "Mövsümi"
   }
 }
 

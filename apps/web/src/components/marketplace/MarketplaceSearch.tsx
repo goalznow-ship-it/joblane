@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Search, SlidersHorizontal, MapPin, X, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { categories } from "@/lib/fixtures"
+import { activeApi } from "@/lib/api"
+import type { Category, Region } from "@joblane/contracts"
 
 const workModes = [
   { value: "", label: "İstənilən rejim" },
@@ -37,13 +38,39 @@ const quickChips = [
 
 export default function MarketplaceSearch({
   onSearch,
+  categories,
+  regions,
 }: {
   onSearch?: (filters: Record<string, string>) => void
+  categories?: Category[]
+  regions?: Region[]
 }) {
   const [keyword, setKeyword] = useState("")
   const [region, setRegion] = useState("")
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
+  const [loadedCategories, setLoadedCategories] = useState<Category[]>(categories || [])
+  const [loadedRegions, setLoadedRegions] = useState<Region[]>(regions || [])
+
+  useEffect(() => {
+    if (!categories) {
+      activeApi.getCategories().then(setLoadedCategories).catch(() => setLoadedCategories([]))
+    }
+  }, [categories])
+
+  useEffect(() => {
+    if (!regions) {
+      activeApi.getRegions().then(setLoadedRegions).catch(() => setLoadedRegions([]))
+    }
+  }, [regions])
+
+  useEffect(() => {
+    if (categories) setLoadedCategories(categories)
+  }, [categories])
+
+  useEffect(() => {
+    if (regions) setLoadedRegions(regions)
+  }, [regions])
 
   const set = (key: string, value: string) => {
     setValues((prev) => {
@@ -96,11 +123,11 @@ export default function MarketplaceSearch({
             aria-label="Region"
           >
             <option value="">Region</option>
-            <option value="baki">Bakı</option>
-            <option value="gence">Gəncə</option>
-            <option value="sumqayit">Sumqayıt</option>
-            <option value="naxcivan">Naxçıvan</option>
-            <option value="bolgeler">Bölgələr</option>
+            {loadedRegions.map((r) => (
+              <option key={r.id} value={r.slug}>
+                {r.name}
+              </option>
+            ))}
           </select>
         </div>
         <button
@@ -170,8 +197,8 @@ export default function MarketplaceSearch({
             className="h-9 rounded-lg border border-border bg-white px-2 text-xs text-slate-700 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-500/10"
           >
             <option value="">Kateqoriya</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
+            {loadedCategories.map((c) => (
+              <option key={c.id} value={c.slug}>
                 {c.name}
               </option>
             ))}

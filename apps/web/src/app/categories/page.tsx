@@ -1,16 +1,38 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
-import { CategoryCard } from "@/components/CategoryCard"
+import { CategoryCard, CategoryCardSkeleton } from "@/components/CategoryCard"
 import { SectionHeaders } from "@/components/SectionHeader"
 import { SearchBar } from "@/components/SearchBar"
-import { categories } from "@/lib/fixtures/categories"
-import { Search, FolderKanban, Briefcase } from "lucide-react"
+import { activeApi } from "@/lib/api"
+import { Search, FolderKanban, Briefcase, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export default function CategoriesPage() {
+  const [categories, setCategories] = useState<Awaited<ReturnType<typeof activeApi.getCategories>>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchCategories = () => {
+    setLoading(true)
+    setError(null)
+    activeApi
+      .getCategories()
+      .then(setCategories)
+      .catch((err) => {
+        console.error("Failed to fetch categories:", err)
+        setError("Kateqoriyalar yüklənə bilmədi. Zəhmət olmasa yenidən cəhd edin.")
+      })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -78,9 +100,25 @@ export default function CategoriesPage() {
             </div>
             {SectionHeaders.latestJobs()}
             <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {categories.map((category) => (
-                <CategoryCard key={category.id} category={category} variant="default" />
-              ))}
+              {loading ? (
+                Array.from({ length: 10 }).map((_, i) => <CategoryCardSkeleton key={i} />)
+              ) : error ? (
+                <div className="col-span-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
+                  <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
+                  <p className="mt-3 text-sm font-semibold text-amber-800">{error}</p>
+                  <Button variant="outline" onClick={fetchCategories} className="mt-3">
+                    Yenidən cəhd et
+                  </Button>
+                </div>
+              ) : categories.length === 0 ? (
+                <div className="col-span-full text-center py-10 text-muted-foreground">
+                  Hazırda kateqoriya mövcud deyil
+                </div>
+              ) : (
+                categories.map((category) => (
+                  <CategoryCard key={category.id} category={category} variant="default" />
+                ))
+              )}
             </div>
           </div>
         </section>

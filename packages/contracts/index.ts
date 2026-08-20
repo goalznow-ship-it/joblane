@@ -21,6 +21,8 @@ export interface Job {
   expiresAt?: string
   isFeatured: boolean
   isPremium?: boolean
+  isUrgent?: boolean
+  categorySlug?: string
   views: number
   applicationsCount: number
 }
@@ -33,8 +35,8 @@ export interface Company {
   coverImage?: string
   description: string
   industry: string
-  size: CompanySize
-  location: string
+  size?: CompanySize
+  location?: string
   website?: string
   verified: boolean
   openJobsCount: number
@@ -49,12 +51,29 @@ export interface Category {
   jobsCount: number
 }
 
+export interface Industry {
+  id: string
+  name: string
+  slug: string
+  jobsCount: number
+}
+
+export interface Region {
+  id: string
+  name: string
+  slug: string
+  city?: string
+  jobsCount: number
+}
+
 export type EmploymentType = 
   | "full_time"
   | "part_time"
   | "internship"
   | "contract"
   | "freelance"
+  | "temporary"
+  | "seasonal"
 
 export type WorkMode = 
   | "on_site"
@@ -90,16 +109,37 @@ export interface PaginatedResponse<T> {
 export interface JobFilters {
   keyword?: string
   location?: string
+  region?: string
+  regionId?: string
   category?: string
+  categoryId?: string
+  industry?: string
+  industryId?: string
   employmentType?: EmploymentType[]
   workMode?: WorkMode[]
   experienceLevel?: ExperienceLevel[]
   salaryMin?: number
   salaryMax?: number
   company?: string
+  companyId?: string
+  premium?: boolean
+  featured?: boolean
+  urgent?: boolean
   page?: number
   limit?: number
   sort?: JobSort
+}
+
+export interface CompanyFilters {
+  q?: string
+  keyword?: string
+  location?: string
+  industry?: string
+  industryId?: string
+  verified?: boolean
+  sort?: "jobs_desc" | "name_asc" | "name_desc" | "newest"
+  page?: number
+  limit?: number
 }
 
 export type JobSort = 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { FileText, Building2, Briefcase, ArrowRight } from "lucide-react"
+import { FileText, Building2, Briefcase, ArrowRight, AlertTriangle, SearchX } from "lucide-react"
 
 import TopHeader from "@/components/marketplace/TopHeader"
 import PortalSidebar from "@/components/marketplace/PortalSidebar"
@@ -13,8 +13,12 @@ import RightRail from "@/components/marketplace/RightRail"
 import AdvertisementSlot from "@/components/marketplace/AdvertisementSlot"
 import SideSkin from "@/components/marketplace/SideSkin"
 import CompanyLogo from "@/components/marketplace/CompanyLogo"
+import EmptyState from "@/components/marketplace/EmptyState"
 
-import { categories, companies, jobs, advertisements, getAdsByPlacement } from "@/lib/fixtures"
+import { activeApi } from "@/lib/api"
+import type { Job, Company, Category } from "@joblane/contracts"
+
+import { advertisements, getAdsByPlacement } from "@/lib/fixtures"
 import type { Advertisement } from "@/lib/fixtures"
 
 interface AdState {
@@ -49,6 +53,50 @@ export default function HomePage() {
   const [query, setQuery] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState<Set<string>>(new Set())
   const [ads, setAds] = useState<AdState>(initialAdState)
+
+  const [latestJobs, setLatestJobs] = useState<Job[]>([])
+  const [premiumJobs, setPremiumJobs] = useState<Job[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [totalJobs, setTotalJobs] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadMarketplace() {
+      setLoading(true)
+      setError(null)
+      try {
+        const [latest, premium, companiesRes, cats, countRes] = await Promise.all([
+          activeApi.getLatestJobs(12),
+          activeApi.getPremiumJobs(5),
+          activeApi.getCompanies({ limit: 8, sort: "jobs_desc" }),
+          activeApi.getCategories(),
+          activeApi.getJobs({ limit: 1 }),
+        ])
+        if (cancelled) return
+        setLatestJobs(latest)
+        setPremiumJobs(premium)
+        setCompanies(companiesRes.data)
+        setCategories(cats)
+        setTotalJobs(countRes.meta.total)
+      } catch (err) {
+        if (cancelled) return
+        console.error("Failed to load marketplace data:", err)
+        setError("Vakansiya məlumatları yüklənə bilmədi. Zəhmət olmasa yenidən cəhd edin.")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadMarketplace()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -236,13 +284,13 @@ export default function HomePage() {
     })
   }
 
-  const matches = (j: (typeof jobs)[number]) => {
+  const matches = (j: Job) => {
     const keyword = (query.keyword ?? "").toLowerCase()
     if (keyword) {
-      const haystack = `${j.title} ${j.company.name} ${j.skills.join(" ")}`.toLowerCase()
+      const haystack = `${j.title} ${j.company.name} ${j.description} ${j.skills.join(" ")}`.toLowerCase()
       if (!haystack.includes(keyword)) return false
     }
-    if (query.category && j.company.id !== query.category) return false
+    if (query.category && j.categorySlug !== query.category) return false
     if (query.region && !j.location.toLowerCase().includes(query.region)) return false
     if (query.workMode && j.workMode !== query.workMode) return false
     if (query.employmentType && j.employmentType !== query.employmentType) return false
@@ -253,37 +301,16 @@ export default function HomePage() {
     return true
   }
 
-  const selectedJobs = useMemo(
-    () =>
-      jobs
-        .filter((j) => j.isPremium)
-        .sort((a, b) => b.views - a.views),
-    []
-  )
-
-  const latestJobs = useMemo(
-    () =>
-      jobs
-        .filter((j) => !j.isPremium && matches(j))
-        .sort(
-          (a, b) =>
-            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-        ),
-    [query]
+  const filteredLatest = useMemo(
+    () => latestJobs.filter((j) => matches(j)),
+    [latestJobs, query]
   )
 
   const hasActiveQuery = Object.values(query).some(Boolean)
-  const shownLatest = hasActiveQuery ? latestJobs : latestJobs.slice(0, 12)
+  const shownLatest = hasActiveQuery ? filteredLatest : latestJobs.slice(0, 12)
 
-  const topCompanies = useMemo(
-    () => [...companies].sort((a, b) => b.openJobsCount - a.openJobsCount).slice(0, 8),
-    []
-  )
-
-  const trendingCategories = useMemo(
-    () => [...categories].sort((a, b) => b.jobsCount - a.jobsCount).slice(0, 6),
-    []
-  )
+  const topCompanies = companies
+  const trendingCategories = categories.slice(0, 6)
 
   const featuredCompany = topCompanies[0]
 
@@ -298,7 +325,7 @@ export default function HomePage() {
   const leftSkinAds = leftSkin
   const rightSkinAds = rightSkin
 
-  if (ads.loading) {
+  if (ads.loading || loading) {
     return (
       <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -359,14 +386,28 @@ export default function HomePage() {
               </p>
             </div>
             <span className="mb-0.5 hidden rounded-lg border border-brand-100 bg-brand-50 px-3 py-1 text-[12px] font-semibold text-brand-600 sm:block">
-              {jobs.length} vakansiya
+              {totalJobs} vakansiya
             </span>
           </div>
 
           <div className="space-y-6">
             <CompanyStrip companies={companies.slice(0, 10)} />
 
-            <MarketplaceSearch onSearch={setQuery} />
+            <MarketplaceSearch onSearch={setQuery} categories={categories} regions={undefined} />
+
+            {error && (
+              <section className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
+                <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
+                <p className="mt-3 text-[13.5px] font-semibold text-amber-800">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-3 rounded-lg bg-amber-500 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-amber-600"
+                >
+                  Yenidən cəhd et
+                </button>
+              </section>
+            )}
 
             <section>
               <div className="mb-2.5 flex items-center justify-between">
@@ -374,10 +415,19 @@ export default function HomePage() {
                   Seçilmiş vakansiyalar
                 </h2>
                 <span className="text-[12px] font-medium text-slate-400">
-                  {selectedJobs.length} elan
+                  {premiumJobs.length} elan
                 </span>
               </div>
-              <VacancyList jobs={selectedJobs} onSave={toggleSave} savedIds={saved} />
+              {premiumJobs.length > 0 ? (
+                <VacancyList jobs={premiumJobs} onSave={toggleSave} savedIds={saved} />
+              ) : (
+                <EmptyState
+                  icon={SearchX}
+                  title="Seçilmiş vakansiya yoxdur"
+                  subtitle="Premium vakansiyalar yayımlandıqda burada görünəcək"
+                  className="rounded-xl border border-border bg-white"
+                />
+              )}
             </section>
 
             <section>
@@ -389,13 +439,26 @@ export default function HomePage() {
                   {shownLatest.length} elan
                 </span>
               </div>
-              <VacancyList
-                jobs={shownLatest}
-                inlineAd={inlineFeed || undefined}
-                adEvery={8}
-                onSave={toggleSave}
-                savedIds={saved}
-              />
+              {shownLatest.length > 0 ? (
+                <VacancyList
+                  jobs={shownLatest}
+                  inlineAd={inlineFeed || undefined}
+                  adEvery={8}
+                  onSave={toggleSave}
+                  savedIds={saved}
+                />
+              ) : (
+                <EmptyState
+                  icon={SearchX}
+                  title={hasActiveQuery ? "Nəticə tapılmadı" : "Hazırda vakansiya yoxdur"}
+                  subtitle={
+                    hasActiveQuery
+                      ? "Axtarış şərtlərini dəyişib yenidən cəhd edin"
+                      : "Yeni vakansiyalar yayımlandıqda burada görünəcək"
+                  }
+                  className="rounded-xl border border-border bg-white"
+                />
+              )}
               <Link
                 href="/jobs"
                 className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-white py-2.5 text-[13px] font-semibold text-brand-600 transition-colors duration-150 hover:border-brand-200 hover:bg-brand-50/60"
@@ -421,7 +484,7 @@ export default function HomePage() {
                 {categories.slice(0, 12).map((cat) => (
                   <Link
                     key={cat.id}
-                    href={`/categories/${cat.slug}`}
+                    href={`/jobs?category=${cat.slug}`}
                     className="group flex items-center justify-between rounded-xl border border-border bg-slate-50/60 px-3 py-2.5 transition-colors hover:border-brand-200 hover:bg-brand-50/60"
                   >
                     <span className="flex items-center gap-2 text-[12.5px] font-semibold text-slate-700 group-hover:text-brand-600">
@@ -505,7 +568,7 @@ export default function HomePage() {
             <footer className="flex flex-col items-center justify-between gap-2 border-t border-border py-4 text-[11px] text-slate-400 sm:flex-row">
               <p>© {new Date().getFullYear()} joblane.az. Bütün hüquqlar qorunur.</p>
               <p className="flex items-center gap-3">
-                <span>{jobs.length} aktiv vakansiya</span>
+                <span>{totalJobs} aktiv vakansiya</span>
                 <span>•</span>
                 <Link href="/about" className="hover:text-brand-500">Haqqımızda</Link>
                 <Link href="/contact" className="hover:text-brand-500">Əlaqə</Link>
