@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 TOKEN_FIELDS = {"token", "verification_token", "reset_token", "password", "new_password"}
 
 # Templates that exist
-TEMPLATES = {"verify_email", "password_reset", "password_changed"}
+TEMPLATES = {"verify_email", "password_reset", "password_changed", "team_invitation"}
 
 _ENCRYPT_PREFIX = "enc:v1:"
 
@@ -211,6 +211,32 @@ def _render(template: str, context: dict) -> tuple[str, str, str]:
             f"bütün sessiyaları ləğv edin və dəstək ilə əlaqə saxlayın.</p>"
         )
         return _mail_subject("Şifrəniz dəyişdirildi"), html_body, text
+
+    if template == "team_invitation":
+        token = str(context.get("token", ""))
+        company_name = html.escape(str(context.get("company_name", "")))
+        role = html.escape(str(context.get("role", "")))
+        invited_by_name = html.escape(str(context.get("invited_by_name", "")))
+        expires_at = str(context.get("expires_at", ""))
+        link = f"{base}/employer/invitations/accept?token={token}"
+        title = f"Sizi {company_name} komandasına dəvət edirlər"
+        text = (
+            f"Hörmətli istifadəçi,\n\n"
+            f"{invited_by_name} sizi {company_name} şirkətinin komandasına {role} rolunda dəvət edir.\n\n"
+            f"Dəvəti qəbul etmək üçün aşağıdakı linki izləyin:\n\n{link}\n\n"
+            f"Bu dəvət {expires_at} tarixinə qədər etibarlıdır.\n\n"
+            f"Joblane komandası"
+        )
+        html_body = _layout(
+            title,
+            f"<p>Hörmətli istifadəçi,</p>"
+            f"<p>{invited_by_name} sizi <strong>{company_name}</strong> şirkətinin komandasına "
+            f"<strong>{role}</strong> rolunda dəvət edir.</p>"
+            f"<p style='text-align:center'><a href='{html.escape(link)}' style='background:#0f766e;color:#fff;"
+            f"padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block'>Dəvəti qəbul et</a></p>"
+            f"<p><small>Bu dəvət {html.escape(expires_at)} tarixinə qədər etibarlıdır.</small></p>"
+        )
+        return _mail_subject(f"Sizi {company_name} komandasına dəvət edirlər"), html_body, text
 
     raise ValueError(f"Unknown email template: {template}")
 

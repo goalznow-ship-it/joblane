@@ -9,6 +9,7 @@ import {
   Briefcase,
   Plus,
   Inbox,
+  Users,
   LogOut,
   Menu,
   X,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/employer/jobs", label: "Vakansiyalar", icon: Briefcase },
   { href: "/employer/jobs/new", label: "Yeni vakansiya", icon: Plus },
   { href: "/employer/applications", label: "Müraciətlər", icon: Inbox },
+  { href: "/employer/team", label: "Komanda", icon: Users },
 ]
 
 const STATUS_BANNERS: Record<string, { title: string; text: string }> = {

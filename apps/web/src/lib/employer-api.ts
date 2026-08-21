@@ -408,3 +408,132 @@ export const WORK_MODE_LABELS: Record<string, string> = {
   REMOTE: "Remote",
   HYBRID: "Hibrid",
 }
+
+export const TEAM_ROLE_LABELS: Record<string, string> = {
+  OWNER: "Sahib",
+  ADMIN: "Admin",
+  RECRUITER: "İşə qəbul",
+  VIEWER: "Baxan",
+}
+
+export const TEAM_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "Aktiv",
+  INVITED: "Dəvət olunub",
+  SUSPENDED: "Dayandırılıb",
+}
+
+export const INVITATION_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Gözləyir",
+  ACCEPTED: "Qəbul edilib",
+  REVOKED: "Ləğv edilib",
+  EXPIRED: "Müddəti bitib",
+}
+
+export interface TeamMember {
+  id: string
+  company_id: string
+  user_id: string
+  role: string
+  status: string
+  user_email: string | null
+  user_full_name: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface TeamInvitation {
+  id: string
+  company_id: string
+  email: string
+  role: string
+  status: string
+  invited_by: string
+  expires_at: string | null
+  accepted_by: string | null
+  accepted_at: string | null
+  revoked_by: string | null
+  revoked_at: string | null
+  created_at: string | null
+}
+
+export interface InvitationPreview {
+  email: string
+  role: string
+  company_name: string
+  company_logo_url: string | null
+  expires_at: string
+  status: string
+}
+
+export const employerTeamApi = {
+  listMembers: () =>
+    request<{ items: TeamMember[]; total: number }>("/api/v1/employer/team/"),
+
+  listInvitations: (status?: string) => {
+    const qs = status ? `?status=${status}` : ""
+    return request<{ items: TeamInvitation[]; total: number }>(
+      `/api/v1/employer/team/invitations${qs}`
+    )
+  },
+
+  inviteMember: (email: string, role: string) =>
+    request<TeamInvitation>("/api/v1/employer/team/invitations", {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    }),
+
+  resendInvitation: (invitationId: string) =>
+    request<TeamInvitation>(
+      `/api/v1/employer/team/invitations/${invitationId}/resend`,
+      { method: "POST" }
+    ),
+
+  revokeInvitation: (invitationId: string) =>
+    request<TeamInvitation>(
+      `/api/v1/employer/team/invitations/${invitationId}`,
+      { method: "DELETE" }
+    ),
+
+  changeRole: (membershipId: string, role: string) =>
+    request<TeamMember>(`/api/v1/employer/team/${membershipId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+
+  suspend: (membershipId: string) =>
+    request<TeamMember>(`/api/v1/employer/team/${membershipId}/suspend`, {
+      method: "POST",
+    }),
+
+  reactivate: (membershipId: string) =>
+    request<TeamMember>(`/api/v1/employer/team/${membershipId}/reactivate`, {
+      method: "POST",
+    }),
+
+  remove: (membershipId: string) =>
+    request<TeamMember>(`/api/v1/employer/team/${membershipId}`, {
+      method: "DELETE",
+    }),
+
+  leave: () =>
+    request<TeamMember>("/api/v1/employer/team/leave", { method: "POST" }),
+
+  transferOwnership: (targetMembershipId: string) =>
+    request<{ previous_owner: TeamMember; new_owner: TeamMember }>(
+      "/api/v1/employer/team/transfer-ownership",
+      { method: "POST", body: JSON.stringify({ target_membership_id: targetMembershipId }) }
+    ),
+}
+
+export const invitationApi = {
+  preview: (token: string) =>
+    request<InvitationPreview>(
+      `/api/v1/employer/invitations/preview?token=${token}`
+    ),
+
+  accept: (token: string) =>
+    request<TeamMember>("/api/v1/employer/invitations/accept", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+}

@@ -9,6 +9,7 @@ from app.core.database import init_db, dispose_db
 from app.auth.router import router as auth_router, account_router
 from app.admin.router import router as admin_router
 from app.employer.router import router as employer_router
+from app.employer.team_router import router as employer_team_router, public_router as employer_invitations_public_router
 from app.candidate.router import router as candidate_router
 from app.notifications.router import router as notifications_router
 from app.public.router import router as public_router
@@ -53,6 +54,8 @@ app.include_router(auth_router)
 app.include_router(account_router)
 app.include_router(admin_router)
 app.include_router(employer_router)
+app.include_router(employer_team_router)
+app.include_router(employer_invitations_public_router)
 app.include_router(candidate_router)
 app.include_router(notifications_router)
 app.include_router(public_router)
