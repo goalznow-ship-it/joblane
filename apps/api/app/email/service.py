@@ -17,6 +17,7 @@ import smtplib
 import socket
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,18 @@ logger = logging.getLogger(__name__)
 TOKEN_FIELDS = {"token", "verification_token", "reset_token", "password", "new_password"}
 
 # Templates that exist
-TEMPLATES = {"verify_email", "password_reset", "password_changed", "team_invitation"}
+TEMPLATES = {
+    "verify_email",
+    "password_reset",
+    "password_changed",
+    "team_invitation",
+    "payment_receipt",
+    "plan_activated",
+    "payment_failed",
+    "promotion_purchased",
+}
+
+BILLING_TEMPLATES = {"payment_receipt", "plan_activated", "payment_failed", "promotion_purchased"}
 
 _ENCRYPT_PREFIX = "enc:v1:"
 
@@ -73,22 +85,94 @@ async def enqueue_email(
     if template not in TEMPLATES:
         raise ValueError(f"Unknown email template: {template}")
     payload = {}
-    for key, value in context.items():
-        if key in TOKEN_FIELDS and value is not None:
-            payload[key] = encrypt_value(str(value))
-        else:
-            payload[key] = value
-    row = EmailOutbox(
-        recipient=recipient,
-        template=template,
-        subject=subject,
-        payload=payload,
-        max_attempts=settings.mail_max_attempts,
+
+
+def _billing_rows_html(rows: list) -> str:
+    trs = "".join(
+        f"<tr><td style='padding:6px 10px;border-bottom:1px solid #e2e8f0'>{html.escape(str(r.get('description', '')))}</td>"
+        f"<td align='right' style='padding:6px 10px;border-bottom:1px solid #e2e8f0'>"
+        f"{html.escape(str(r.get('amount', '')))} {html.escape(str(r.get('currency', '')))}</td></tr>"
+        for r in rows
     )
-    db.add(row)
-    await db.flush()
-    logger.info("Email queued: template=%s to=%s", template, recipient)
-    return row
+    return (
+        "<table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #e2e8f0;border-radius:8px;"
+        "border-collapse:collapse;font-size:13px;margin:12px 0'>"
+        f"<tr><th align='left' style='padding:6px 10px;background:#f8fafc'>Məhsul</th>"
+        f"<th align='right' style='padding:6px 10px;background:#f8fafc'>Məbləğ</th></tr>{trs}</table>"
+    )
+
+
+def _render_billing(template: str, context: dict) -> tuple[str, str, str]:
+    """Render billing-related transactional emails. Never includes card data."""
+    company = html.escape(str(context.get("company_name", "")))
+    amount = html.escape(str(context.get("amount", "")))
+    currency = html.escape(str(context.get("currency", "")))
+    rows = context.get("rows") or []
+    invoice_number = html.escape(str(context.get("invoice_number", "")))
+    base = settings.app_public_url.rstrip("/")
+    billing_url = f"{base}/employer/billing"
+
+    if template == "payment_receipt":
+        title = "Ödəniş qəbzi"
+        body = (
+            f"<p><strong>{company}</strong> üçün ödənişiniz uğurla həyata keçirildi.</p>"
+            f"<p>Məbləğ: <strong>{amount} {currency}</strong>"
+            + (f" &middot; Faktura: <strong>{invoice_number}</strong>" if invoice_number else "")
+            + "</p>" + _billing_rows_html(rows)
+            + f"<p>Fakturanı görmək üçün: <a href='{html.escape(billing_url)}'>{html.escape(billing_url)}</a></p>"
+        )
+        text = (
+            f"Ödəniş qəbzi\n\n{company} üçün ödəniş uğurla tamamlandı.\n"
+            f"Məbləğ: {amount} {currency}\n"
+            + (f"Faktura: {invoice_number}\n" if invoice_number else "")
+            + "\nJoblane komandası"
+        )
+        return _mail_subject("Ödəniş qəbzi"), _layout(title, body), text
+
+    if template == "plan_activated":
+        plan_name = html.escape(str(context.get("plan_name", "")))
+        period_end = str(context.get("period_end", ""))
+        credits_lines = "".join(
+            f"<li>{html.escape(str(k))}: {html.escape(str(v))}</li>" for k, v in (context.get("credits") or {}).items()
+        )
+        body = (
+            f"<p><strong>{company}</strong> üçün <strong>{plan_name}</strong> paketi aktivləşdirildi.</p>"
+            + (f"<p>Dövrün sonu: {html.escape(period_end)}</p>" if period_end else "")
+            + (f"<ul>{credits_lines}</ul>" if credits_lines else "")
+            + f"<p><a href='{html.escape(billing_url)}'>Paketlər və kreditlər</a></p>"
+        )
+        text = (
+            f"Paket aktivləşdirildi\n\n{plan_name} paketi {company} şirkəti üçün aktivdir.\n"
+            f"Joblane komandası"
+        )
+        return _mail_subject(f"{plan_name} paketi aktivləşdirildi"), _layout(title, body), text
+
+    if template == "payment_failed":
+        description = html.escape(str(context.get("description", "")))
+        body = (
+            f"<p><strong>{company}</strong> üçün ödəniş uğursuz oldu.</p>"
+            + (f"<p>{description}</p>" if description else "")
+            + f"<p>Zəhmət olmasa yenidən cəhd edin: <a href='{html.escape(billing_url)}'>{html.escape(billing_url)}</a></p>"
+        )
+        text = (
+            f"Ödəniş uğursuz oldu\n\n{description}\n\nJoblane komandası"
+        )
+        return _mail_subject("Ödəniş uğursuz oldu"), _layout(title, body), text
+
+    if template == "promotion_purchased":
+        product = html.escape(str(context.get("product", "")))
+        job_title = html.escape(str(context.get("job_title", "")))
+        ends_at = str(context.get("ends_at", ""))
+        body = (
+            f"<p><strong>{job_title}</strong> vakansiyası üçün <strong>{product}</strong> "
+            f"promosyonu aktivləşdirildi.</p>"
+            + (f"<p>Bitmə tarixi: {html.escape(ends_at)}</p>" if ends_at else "")
+            + f"<p>Məbləğ: {amount} {currency}</p>"
+        )
+        text = f"Promosyon aktivləşdirildi\n\n{product} — {job_title}\nJoblane komandası"
+        return _mail_subject("Promosyon aktivləşdirildi"), _layout(title, body), text
+
+    raise ValueError(f"Unknown billing email template: {template}")
 
 
 async def queue_verification_email(
@@ -140,6 +224,106 @@ async def queue_password_changed_notification(
         template="password_changed",
         subject="Joblane — Şifrəniz dəyişdirildi",
         context={"user_email": email},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Billing transactional emails (no card data, ever)
+# ---------------------------------------------------------------------------
+
+async def queue_payment_receipt_email(
+    db: AsyncSession,
+    email: str,
+    *,
+    company_name: str,
+    amount,
+    currency: str,
+    invoice_number: str = "",
+    rows: Optional[list] = None,
+) -> EmailOutbox:
+    return await enqueue_email(
+        db,
+        recipient=email,
+        template="payment_receipt",
+        subject="Joblane — Ödəniş qəbzi",
+        context={
+            "user_email": email,
+            "company_name": company_name,
+            "amount": str(amount),
+            "currency": currency,
+            "invoice_number": invoice_number,
+            "rows": rows or [],
+        },
+    )
+
+
+async def queue_plan_activated_email(
+    db: AsyncSession,
+    email: str,
+    *,
+    company_name: str,
+    plan_name: str,
+    period_end: str = "",
+    credits: Optional[dict] = None,
+) -> EmailOutbox:
+    return await enqueue_email(
+        db,
+        recipient=email,
+        template="plan_activated",
+        subject="Joblane — Paket aktivləşdirildi",
+        context={
+            "user_email": email,
+            "company_name": company_name,
+            "plan_name": plan_name,
+            "period_end": period_end,
+            "credits": credits or {},
+        },
+    )
+
+
+async def queue_payment_failed_email(
+    db: AsyncSession,
+    email: str,
+    *,
+    company_name: str,
+    description: str = "",
+) -> EmailOutbox:
+    return await enqueue_email(
+        db,
+        recipient=email,
+        template="payment_failed",
+        subject="Joblane — Ödəniş uğursuz oldu",
+        context={
+            "user_email": email,
+            "company_name": company_name,
+            "description": description,
+        },
+    )
+
+
+async def queue_promotion_purchased_email(
+    db: AsyncSession,
+    email: str,
+    *,
+    product: str,
+    job_title: str,
+    amount,
+    currency: str,
+    ends_at: str = "",
+) -> EmailOutbox:
+    return await enqueue_email(
+        db,
+        recipient=email,
+        template="promotion_purchased",
+        subject="Joblane — Promosyon aktivləşdirildi",
+        context={
+            "user_email": email,
+            "product": product,
+            "job_title": job_title,
+            "amount": str(amount),
+            "currency": currency,
+            "ends_at": ends_at,
+        },
     )
 
 
@@ -237,6 +421,9 @@ def _render(template: str, context: dict) -> tuple[str, str, str]:
             f"<p><small>Bu dəvət {html.escape(expires_at)} tarixinə qədər etibarlıdır.</small></p>"
         )
         return _mail_subject(f"Sizi {company_name} komandasına dəvət edirlər"), html_body, text
+
+    if template in BILLING_TEMPLATES:
+        return _render_billing(template, context)
 
     raise ValueError(f"Unknown email template: {template}")
 

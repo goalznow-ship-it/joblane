@@ -66,6 +66,21 @@ class Settings(BaseSettings):
     rate_limit: int = 1000
     rate_limit_window: int = 60
 
+    # Billing / Payments (secrets are optional and never returned by APIs)
+    payment_provider: str = "test"  # test | (future: real providers via env)
+    payment_mode: str = "sandbox"  # sandbox | production
+    payment_api_key: Optional[str] = os.getenv("PAYMENT_API_KEY")
+    payment_secret: Optional[str] = os.getenv("PAYMENT_SECRET")
+    payment_webhook_secret: Optional[str] = os.getenv("PAYMENT_WEBHOOK_SECRET") or "test-webhook-secret"
+    payment_return_url: str = "http://localhost:1111/employer/billing/payment/result"
+    payment_cancel_url: str = "http://localhost:1111/employer/billing"
+
+    # Invoice seller identity (configurable; no invented legal identifiers)
+    invoice_seller_name: str = "Joblane"
+    invoice_seller_address: Optional[str] = None
+    invoice_seller_email: str = "no-reply@joblane.local"
+    invoice_seller_website: str = "http://localhost:1111"
+
     # CORS
     allowed_origins: str = "http://localhost:1111,http://localhost:8000"
 

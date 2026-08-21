@@ -39,6 +39,7 @@ class Permission:
     ADS_MANAGE = "ads.manage"
     ADS_VIEW = "ads.view"
     PAYMENTS_VIEW = "payments.view"
+    PAYMENTS_MANAGE = "payments.manage"
     REPORTS_MANAGE = "reports.manage"
     AUDIT_VIEW = "audit.view"
     ADMINS_MANAGE = "admins.manage"
@@ -65,6 +66,7 @@ class Permission:
         ADS_MANAGE,
         ADS_VIEW,
         PAYMENTS_VIEW,
+        PAYMENTS_MANAGE,
         REPORTS_MANAGE,
         AUDIT_VIEW,
         ADMINS_MANAGE,
@@ -74,8 +76,7 @@ class Permission:
 
 ROLE_PERMISSIONS: dict[AdminRole, set[str]] = {
     AdminRole.SUPER_ADMIN: Permission.ALL,
-    AdminRole.ADMIN: Permission.ALL - {Permission.ADMINS_MANAGE, Permission.SETTINGS_MANAGE},
-    AdminRole.MODERATOR: {
+    AdminRole.ADMIN: Permission.ALL - {Permission.ADMINS_MANAGE, Permission.SETTINGS_MANAGE},    AdminRole.MODERATOR: {
         Permission.DASHBOARD_VIEW,
         Permission.JOBS_VIEW,
         Permission.JOBS_MODERATE,

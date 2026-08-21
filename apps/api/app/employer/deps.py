@@ -23,7 +23,7 @@ from app.admin.models import (
     CompanyMembershipStatus,
     CompanyStatus,
 )
-from app.employer.permissions import has_employer_permission
+from app.employer.permissions import has_billing_permission, has_employer_permission
 
 
 class EmployerError(HTTPException):
@@ -142,3 +142,20 @@ require_jobs_archive = require_employer_permission
 require_applications_read = require_employer_permission
 require_applications_write = require_employer_permission
 require_team_manage = require_employer_permission
+
+
+def _billing_dependency(permission: str):
+    def dependency(
+        ctx: Annotated[EmployerContext, Depends(get_company_context)],
+    ) -> EmployerContext:
+        if not has_billing_permission(ctx.membership.role.value, permission):
+            raise EmployerError(
+                "Bu əməliyyat üçün icazəniz yoxdur", status.HTTP_403_FORBIDDEN
+            )
+        return ctx
+
+    return dependency
+
+
+require_billing_read = _billing_dependency("employer.billing.read")
+require_billing_manage = _billing_dependency("employer.billing.manage")
