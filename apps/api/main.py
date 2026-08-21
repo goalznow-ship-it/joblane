@@ -12,6 +12,7 @@ from app.employer.router import router as employer_router
 from app.employer.team_router import router as employer_team_router, public_router as employer_invitations_public_router
 from app.candidate.router import router as candidate_router
 from app.notifications.router import router as notifications_router
+from app.reports.router import router as report_router, admin_router as admin_report_router, blocklist_router as admin_blocklist_router
 from app.public.router import router as public_router
 from app.health import router as health_router
 
@@ -59,4 +60,7 @@ app.include_router(employer_invitations_public_router)
 app.include_router(candidate_router)
 app.include_router(notifications_router)
 app.include_router(public_router)
+app.include_router(report_router)
+app.include_router(admin_report_router)
+app.include_router(admin_blocklist_router)
 app.include_router(health_router)

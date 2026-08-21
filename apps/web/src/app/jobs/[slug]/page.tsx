@@ -29,6 +29,7 @@ import { activeApi } from "@/lib/api"
 import type { Job } from "@joblane/contracts"
 import { workModeLabel } from "@/components/marketplace/VacancyRow"
 import { ApplyBox } from "@/components/jobs/ApplyBox"
+import ReportModal from "@/app/jobs/[slug]/report-modal"
 
 function formatSalary(job: Job): string {
   if (job.salaryMin == null && job.salaryMax == null) return "Maaş göstərilməyib"
@@ -69,6 +70,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ slug: stri
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [slug, setSlug] = useState<string | null>(null)
+  const [reportOpen, setReportOpen] = useState(false)
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug)).catch(() => setSlug(""))
@@ -357,11 +359,29 @@ export default function JobDetailPage({ params }: { params: Promise<{ slug: stri
                     <VacancyList jobs={related} />
                   </section>
                 )}
+
+                <div className="pt-4 border-t border-border">
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="text-[12px] text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Şikayət et
+                  </button>
+                </div>
               </div>
             </main>
           </div>
         </div>
       </div>
+
+      {job && (
+        <ReportModal
+          jobId={job.id}
+          jobTitle={job.title}
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   )
 }

@@ -40,7 +40,7 @@ from app.candidate.models import (
     SavedJob,
 )
 
-from tests.conftest import PASSWORD, login, csrf_headers
+from conftest import PASSWORD, login, csrf_headers
 
 CANDIDATE_EMAIL = "phase3.candidate@joblane.az"
 CANDIDATE2_EMAIL = "phase3.candidate2@joblane.az"

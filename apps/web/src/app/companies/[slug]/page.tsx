@@ -22,6 +22,7 @@ import EmptyState from "@/components/marketplace/EmptyState"
 
 import { activeApi } from "@/lib/api"
 import type { Company, Job } from "@joblane/contracts"
+import ReportModal from "@/app/companies/[slug]/report-modal"
 
 export default function CompanyDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const [company, setCompany] = useState<Company | null>(null)
@@ -30,6 +31,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ slug: 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [slug, setSlug] = useState<string | null>(null)
+  const [reportOpen, setReportOpen] = useState(false)
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug)).catch(() => setSlug(""))
@@ -203,11 +205,29 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ slug: 
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </section>
+
+                <div className="pt-4 border-t border-border">
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="text-[12px] text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Şikayət et
+                  </button>
+                </div>
               </div>
             </main>
           </div>
         </div>
       </div>
+
+      {company && (
+        <ReportModal
+          companyId={company.id}
+          companyName={company.name}
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   )
 }

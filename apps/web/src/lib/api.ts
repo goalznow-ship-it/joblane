@@ -871,3 +871,247 @@ export const notificationApi = {
     return res.json()
   },
 }
+
+// ---------------------------------------------------------------------------
+// Report & Blocklist API
+// ---------------------------------------------------------------------------
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || "GET").toUpperCase()
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  }
+
+  if (method !== "GET" && method !== "HEAD") {
+    const token = getCsrfToken()
+    if (token) headers["X-CSRF-Token"] = token
+  }
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    method,
+    headers,
+    credentials: "include",
+  })
+
+  if (!res.ok) {
+    let detail: unknown = `HTTP ${res.status}`
+    try {
+      const body = await res.json()
+      detail = body.detail ?? body.message ?? detail
+    } catch {
+      // keep default detail
+    }
+    throw new ApiError(res.status, detail)
+  }
+
+  if (res.status === 204) return undefined as T
+  return res.json()
+}
+
+export interface Report {
+  id: string
+  target_type: string
+  target_id: string
+  reason: string
+  reason_label?: string
+  description?: string | null
+  status: string
+  priority?: string
+  target_snapshot?: Record<string, unknown> | null
+  assigned_to?: string | null
+  resolved_by?: string | null
+  resolved_at?: string | null
+  resolution?: string | null
+  resolution_note?: string | null
+  reporter_message?: string | null
+  duplicate_of?: string | null
+  source?: string | null
+  created_at: string
+  updated_at?: string | null
+}
+
+export interface ReportListItem {
+  id: string
+  target_type: string
+  target_id: string
+  reason: string
+  reason_label?: string
+  status: string
+  priority?: string
+  target_snapshot?: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface ReportListResponse {
+  items: ReportListItem[]
+  total: number
+  page: number
+  limit: number
+  total_pages: number
+}
+
+export interface ReportHistoryEntry {
+  id: string
+  actor_id?: string | null
+  from_status?: string | null
+  to_status?: string | null
+  action: string
+  note?: string | null
+  created_at: string
+}
+
+export interface BlocklistEntry {
+  id: string
+  type: string
+  value_normalized: string
+  reason?: string | null
+  status: string
+  created_at: string
+  expires_at?: string | null
+  note?: string | null
+}
+
+export const REPORT_REASON_LABELS: Record<string, string> = {
+  SPAM: "Spam",
+  SCAM: "Dələduzluq şübhəsi",
+  FRAUD: "Dələduzluq",
+  MISLEADING_INFORMATION: "Yanlış/misleading məlumat",
+  DISCRIMINATORY_CONTENT: "Diskriminativ məzmun",
+  INAPPROPRIATE_CONTENT: "Uyğunsuz məzmun",
+  DUPLICATE_LISTING: "Təkrar elan",
+  EXPIRED_OR_INVALID: "Elan etibarsızdır",
+  FAKE_COMPANY: "Sahte şirkət",
+  SUSPICIOUS_CONTACT: "Şübhəli əlaqə məlumatı",
+  OTHER: "Digər",
+}
+
+export const REPORT_STATUS_LABELS: Record<string, string> = {
+  OPEN: "Açıq",
+  UNDER_REVIEW: "Baxılır",
+  ACTION_REQUIRED: "Tələb olunur",
+  RESOLVED: "Həll edilib",
+  DISMISSED: "Rədd edilib",
+  DUPLICATE: "Təkrar",
+}
+
+export const REPORT_PRIORITY_LABELS: Record<string, string> = {
+  LOW: "Aşağı",
+  NORMAL: "Normal",
+  HIGH: "Yüksək",
+  CRITICAL: "Kritik",
+}
+
+export const REPORT_RESOLUTION_LABELS: Record<string, string> = {
+  NO_VIOLATION: "Pozuntu yoxdur",
+  CONTENT_REMOVED: "Məzmun silindi",
+  CONTENT_PAUSED: "Məzmun dayandırıldı",
+  COMPANY_ACTION_TAKEN: "Şirkətə qarşı tədbir görüldü",
+  USER_ACTION_TAKEN: "İstifadəçiyə qarşı tədbir görüldü",
+  WARNING_ISSUED: "Xəbərdarlıq verildi",
+  OTHER: "Digər",
+}
+
+export const reportApi = {
+  create: (targetType: string, targetId: string, reason: string, description?: string) =>
+    request<{ id: string; status: string }>("/api/v1/reports", {
+      method: "POST",
+      body: JSON.stringify({ target_type: targetType, target_id: targetId, reason, description }),
+    }),
+
+  listMy: (params?: { status?: string; target_type?: string; page?: number; limit?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.status) qs.set("status", params.status)
+    if (params?.target_type) qs.set("target_type", params.target_type)
+    if (params?.page) qs.set("page", String(params.page))
+    if (params?.limit) qs.set("limit", String(params.limit))
+    const q = qs.toString()
+    return request<ReportListResponse>(`/api/v1/reports/mine${q ? "?" + q : ""}`)
+  },
+
+  getMy: (id: string) => request<Report>(`/api/v1/reports/${id}`),
+}
+
+export const adminReportApi = {
+  list: (params?: Record<string, string | number | undefined>) => {
+    const qs = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") qs.set(k, String(v))
+      })
+    }
+    const q = qs.toString()
+    return request<ReportListResponse>(`/api/v1/admin/reports${q ? "?" + q : ""}`)
+  },
+
+  get: (id: string) => request<Report & { history?: ReportHistoryEntry[]; related_reports_count?: number }>(`/api/v1/admin/reports/${id}`),
+
+  assign: (id: string, assigneeId?: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/assign`, {
+      method: "POST",
+      body: JSON.stringify({ assignee_id: assigneeId || null }),
+    }),
+
+  changePriority: (id: string, priority: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/priority`, {
+      method: "PATCH",
+      body: JSON.stringify({ priority }),
+    }),
+
+  markDuplicate: (id: string, duplicateOfId: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/duplicate`, {
+      method: "POST",
+      body: JSON.stringify({ duplicate_of_report_id: duplicateOfId }),
+    }),
+
+  dismiss: (id: string, resolutionNote?: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/dismiss`, {
+      method: "POST",
+      body: JSON.stringify({ resolution_note: resolutionNote }),
+    }),
+
+  confirm: (id: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/confirm`, { method: "POST" }),
+
+  resolve: (id: string, resolution: string, resolutionNote?: string, reporterMessage?: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ resolution, resolution_note: resolutionNote, reporter_message: reporterMessage }),
+    }),
+
+  jobAction: (id: string, action: string, reason?: string, note?: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/actions/job`, {
+      method: "POST",
+      body: JSON.stringify({ action, reason, note }),
+    }),
+
+  companyAction: (id: string, action: string, reason?: string, note?: string) =>
+    request<Report>(`/api/v1/admin/reports/${id}/actions/company`, {
+      method: "POST",
+      body: JSON.stringify({ action, reason, note }),
+    }),
+}
+
+export const adminBlocklistApi = {
+  list: (params?: { type?: string; status?: string; page?: number; limit?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.type) qs.set("type", params.type)
+    if (params?.status) qs.set("status", params.status)
+    if (params?.page) qs.set("page", String(params.page))
+    if (params?.limit) qs.set("limit", String(params.limit))
+    const q = qs.toString()
+    return request<{ items: BlocklistEntry[]; total: number; page: number; limit: number; total_pages: number }>(
+      `/api/v1/admin/blocklist${q ? "?" + q : ""}`
+    )
+  },
+
+  create: (type: string, value: string, reason?: string, note?: string) =>
+    request<BlocklistEntry>("/api/v1/admin/blocklist", {
+      method: "POST",
+      body: JSON.stringify({ type, value, reason, note }),
+    }),
+
+  deactivate: (id: string) =>
+    request<BlocklistEntry>(`/api/v1/admin/blocklist/${id}`, { method: "DELETE" }),
+}

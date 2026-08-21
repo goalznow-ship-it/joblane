@@ -587,3 +587,122 @@ class AuditLog(Base):
     ip_address = Column(String(45))
     user_agent = Column(Text)
     created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False, index=True)
+
+
+# ── Report / Moderation (Phase 6) ──────────────────────────────────────
+
+
+class ReportTargetType(enum.Enum):
+    JOB = "JOB"
+    COMPANY = "COMPANY"
+
+
+class ReportReason(enum.Enum):
+    SPAM = "SPAM"
+    SCAM = "SCAM"
+    FRAUD = "FRAUD"
+    MISLEADING_INFORMATION = "MISLEADING_INFORMATION"
+    DISCRIMINATORY_CONTENT = "DISCRIMINATORY_CONTENT"
+    INAPPROPRIATE_CONTENT = "INAPPROPRIATE_CONTENT"
+    DUPLICATE_LISTING = "DUPLICATE_LISTING"
+    EXPIRED_OR_INVALID = "EXPIRED_OR_INVALID"
+    FAKE_COMPANY = "FAKE_COMPANY"
+    SUSPICIOUS_CONTACT = "SUSPICIOUS_CONTACT"
+    OTHER = "OTHER"
+
+
+class ReportStatus(enum.Enum):
+    OPEN = "OPEN"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    ACTION_REQUIRED = "ACTION_REQUIRED"
+    RESOLVED = "RESOLVED"
+    DISMISSED = "DISMISSED"
+    DUPLICATE = "DUPLICATE"
+
+
+class ReportPriority(enum.Enum):
+    LOW = "LOW"
+    NORMAL = "NORMAL"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class ReportResolution(enum.Enum):
+    NO_VIOLATION = "NO_VIOLATION"
+    CONTENT_REMOVED = "CONTENT_REMOVED"
+    CONTENT_PAUSED = "CONTENT_PAUSED"
+    COMPANY_ACTION_TAKEN = "COMPANY_ACTION_TAKEN"
+    USER_ACTION_TAKEN = "USER_ACTION_TAKEN"
+    WARNING_ISSUED = "WARNING_ISSUED"
+    OTHER = "OTHER"
+
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    target_type = Column(Enum(ReportTargetType, name="report_target_type", create_type=False), nullable=False)
+    target_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    reason = Column(Enum(ReportReason, name="report_reason", create_type=False), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(Enum(ReportStatus, name="report_status", create_type=False), nullable=False, default=ReportStatus.OPEN, index=True)
+    priority = Column(Enum(ReportPriority, name="report_priority", create_type=False), nullable=False, default=ReportPriority.NORMAL)
+    target_snapshot = Column(JSON, nullable=True)
+    assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolution = Column(Enum(ReportResolution, name="report_resolution", create_type=False), nullable=True)
+    resolution_note = Column(Text, nullable=True)
+    reporter_message = Column(Text, nullable=True)
+    duplicate_of = Column(UUID(as_uuid=True), ForeignKey("reports.id"), nullable=True)
+    source = Column(String(50), nullable=True)
+    reporter_ip_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=utcnow)
+
+    reporter = relationship("User", foreign_keys=[reporter_id])
+    assignee = relationship("User", foreign_keys=[assigned_to])
+    resolver = relationship("User", foreign_keys=[resolved_by])
+    duplicate_report = relationship("Report", remote_side=[id])
+
+
+class ReportHistory(Base):
+    __tablename__ = "report_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    report_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    from_status = Column(String(30), nullable=True)
+    to_status = Column(String(30), nullable=True)
+    action = Column(String(50), nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+
+    report = relationship("Report")
+
+
+class BlocklistType(enum.Enum):
+    EMAIL = "EMAIL"
+    EMAIL_DOMAIN = "EMAIL_DOMAIN"
+
+
+class BlocklistStatus(enum.Enum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+
+
+class ModerationBlocklist(Base):
+    __tablename__ = "moderation_blocklist"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    type = Column(Enum(BlocklistType, name="blocklist_type", create_type=False), nullable=False)
+    value_normalized = Column(String(255), nullable=False, index=True)
+    reason = Column(Text, nullable=True)
+    status = Column(Enum(BlocklistStatus, name="blocklist_status", create_type=False), nullable=False, default=BlocklistStatus.ACTIVE, index=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    note = Column(Text, nullable=True)
+
+    creator = relationship("User")

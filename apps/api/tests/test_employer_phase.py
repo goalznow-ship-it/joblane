@@ -30,7 +30,7 @@ from app.admin.models import (
     JobStatus,
 )
 
-from tests.conftest import ADMIN_EMAIL, PASSWORD, login, csrf_headers
+from conftest import ADMIN_EMAIL, PASSWORD, login, csrf_headers
 
 EMPLOYER_A_EMAIL = "employer.a@joblane.az"
 EMPLOYER_B_EMAIL = "employer.b@joblane.az"

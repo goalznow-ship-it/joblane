@@ -23,6 +23,7 @@ import {
   Settings,
   LogOut,
   Loader2,
+  Ban,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { hasPermission } from "@/lib/admin-api"
@@ -41,7 +42,8 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; disable
   { href: "/admin/ads", label: "Reklamlar", icon: Megaphone, permission: "ads.view" },
   { href: "/admin/promotions", label: "Promosiyalar", icon: Rocket, disabled: true },
   { href: "/admin/payments", label: "Ödənişlər", icon: CreditCard, disabled: true },
-  { href: "/admin/complaints", label: "Şikayətlər", icon: ShieldAlert, disabled: true },
+  { href: "/admin/reports", label: "Şikayətlər", icon: ShieldAlert, permission: "reports.view" },
+  { href: "/admin/blocklist", label: "Qara siyahı", icon: Ban, permission: "reports.view" },
   { href: "/admin/audit", label: "Audit", icon: ScrollText, disabled: true },
   { href: "/admin/admins", label: "Adminlər", icon: Settings, disabled: true },
 ]

@@ -29,7 +29,7 @@ from app.employer.models import CompanyInvitation, InvitationStatus
 from app.employer.team_service import generate_invite_token, hash_token
 from app.email.models import EmailOutbox
 
-from tests.conftest import ADMIN_EMAIL, PASSWORD, login, csrf_headers
+from conftest import ADMIN_EMAIL, PASSWORD, login, csrf_headers
 
 # -- test user emails ---------------------------------------------------
 
