@@ -12,6 +12,7 @@ import { authApi, ApiError } from "@/lib/api"
 import { candidateApi } from "@/lib/candidate-api"
 import { employerApi } from "@/lib/employer-api"
 import { adminApi } from "@/lib/admin-api"
+import { NotificationBell } from "@/components/NotificationBell"
 
 const navigation = [
   { name: "Vakansiyalar", href: "/jobs", icon: Briefcase },
@@ -141,7 +142,9 @@ export function Header() {
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             ) : authenticated ? (
-              <DropdownMenu>
+              <>
+                <NotificationBell />
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-accent" aria-label="Hesab menyusu">
                     <Avatar className="h-8 w-8">
@@ -188,6 +191,7 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <div className="flex items-center gap-3">
                 <Link href="/auth/login">

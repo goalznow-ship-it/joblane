@@ -63,7 +63,10 @@ from app.admin.schemas import (
     PublicAdOut,
 )
 from app.auth.models import User, UserStatus
+from app.admin.models import CompanyMemberRole
 from app.core.database import get_db
+from app.notifications.service import create_notification, notify_company_members
+from app.notifications.models import NotificationType
 
 DEFAULT_VACANCY_DURATION_DAYS = 30
 
@@ -289,6 +292,16 @@ async def moderate_job(
         job.status = JobStatus.APPROVED
         job.moderation_reason = None
         job.moderation_note = note
+        await notify_company_members(
+            db,
+            company_id=job.company_id,
+            type=NotificationType.JOB_APPROVED,
+            title="Vakansiya təsdiqləndi",
+            message=f"'{job.title}' vakansiyanız təsdiqləndi və dərc üçün hazırdır.",
+            entity_type="job",
+            entity_id=job.id,
+            action_url="/employer/jobs",
+        )
     elif decision == "reject":
         if job.status in (JobStatus.PUBLISHED, JobStatus.PAUSED, JobStatus.EXPIRED):
             raise AdminError("Yayımlanmış vakansiya rədd edilə bilməz — əvvəlcə arxivləyin")
@@ -298,6 +311,16 @@ async def moderate_job(
         job.status = JobStatus.REJECTED
         job.moderation_reason = reason.strip()
         job.moderation_note = note
+        await notify_company_members(
+            db,
+            company_id=job.company_id,
+            type=NotificationType.JOB_REJECTED,
+            title="Vakansiya rədd edildi",
+            message=f"'{job.title}' vakansiyanız rədd edildi: {reason.strip()}",
+            entity_type="job",
+            entity_id=job.id,
+            action_url="/employer/jobs",
+        )
     else:
         raise AdminError("Yanlış qərar")
     return job
@@ -331,6 +354,27 @@ async def change_job_status(
         job.publication_date = job.publication_date or now
         if not job.expiration_date or job.expiration_date <= now:
             job.expiration_date = (job.publication_date or now) + timedelta(days=DEFAULT_VACANCY_DURATION_DAYS)
+        await notify_company_members(
+            db,
+            company_id=job.company_id,
+            type=NotificationType.JOB_APPROVED,
+            title="Vakansiya yayımlandı",
+            message=f"'{job.title}' vakansiyanız yayımlandı.",
+            entity_type="job",
+            entity_id=job.id,
+            action_url="/employer/jobs",
+        )
+    elif action == "archive":
+        await notify_company_members(
+            db,
+            company_id=job.company_id,
+            type=NotificationType.JOB_ARCHIVED,
+            title="Vakansiya arxivləndi",
+            message=f"'{job.title}' vakansiyanız arxivləndi.",
+            entity_type="job",
+            entity_id=job.id,
+            action_url="/employer/jobs",
+        )
     if action == "restore":
         job.moderation_reason = None
     return job
@@ -691,12 +735,46 @@ async def change_company_status(
         company.verified_at = now
         company.verified_by = actor.id
         company.verification_notes = note
+        await notify_company_members(
+            db,
+            company_id=company.id,
+            type=NotificationType.COMPANY_APPROVED,
+            title="Şirkət təsdiqləndi",
+            message=f"'{company.name}' şirkətiniz təsdiqləndi.",
+            entity_type="company",
+            entity_id=company.id,
+            action_url="/employer/company",
+            roles=[CompanyMemberRole.OWNER],
+        )
     elif action == "unverify":
         company.verified_at = None
         company.verified_by = None
         company.verification_notes = None
     elif action == "reject":
         company.verification_notes = reason
+        await notify_company_members(
+            db,
+            company_id=company.id,
+            type=NotificationType.COMPANY_REJECTED,
+            title="Şirkət rədd edildi",
+            message=f"'{company.name}' şirkətiniz rədd edildi: {reason or 'səbəb göstərilməyib'}",
+            entity_type="company",
+            entity_id=company.id,
+            action_url="/employer/company",
+            roles=[CompanyMemberRole.OWNER],
+        )
+    elif action == "suspend":
+        await notify_company_members(
+            db,
+            company_id=company.id,
+            type=NotificationType.COMPANY_REJECTED,
+            title="Şirkət dayandırıldı",
+            message=f"'{company.name}' şirkətiniz dayandırıldı: {reason or 'səbəb göstərilməyib'}",
+            entity_type="company",
+            entity_id=company.id,
+            action_url="/employer/company",
+            roles=[CompanyMemberRole.OWNER],
+        )
 
     return company
 
@@ -842,6 +920,30 @@ async def change_user_status(
         raise AdminError(f"'{user.status.value}' vəziyyətindən '{target.value}' vəziyyətinə keçid mümkün deyil")
 
     user.status = target
+
+    if action in ("suspend", "deactivate"):
+        await create_notification(
+            db,
+            user_id=user.id,
+            type=NotificationType.ACCOUNT_SUSPENDED if action == "suspend" else NotificationType.ACCOUNT_BLOCKED,
+            title="Hesabınız dayandırıldı" if action == "suspend" else "Hesabınız deaktiv edildi",
+            message=f"Hesabınız administrasiya tərəfindən dayandırıldı: {reason or 'səbəb göstərilməyib'}",
+            entity_type="user",
+            entity_id=user.id,
+            action_url="/account/security",
+        )
+    elif action in ("unsuspend", "reactivate"):
+        await create_notification(
+            db,
+            user_id=user.id,
+            type=NotificationType.ACCOUNT_ACTIVATED,
+            title="Hesabınız bərpa edildi",
+            message="Hesabınız administrasiya tərəfindən yenidən aktivləşdirildi.",
+            entity_type="user",
+            entity_id=user.id,
+            action_url="/account/security",
+        )
+
     return user
 
 
@@ -866,7 +968,7 @@ async def revoke_user_sessions(
     sessions = result.scalars().all()
     revoked_count = 0
     for session in sessions:
-        session.revoked = True
+        session.revoked_at = func.now()
         revoked_count += 1
 
     return {"revoked_count": revoked_count}

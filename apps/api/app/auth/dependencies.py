@@ -179,16 +179,72 @@ async def rate_limit_login(
     return True
 
 
+async def rate_limit_register(
+    request: Request,
+) -> bool:
+    """Rate limit for registration endpoint."""
+    ip = request.client.host
+    key = f"register_rate_limit:{ip}"
+    
+    if not await rate_limiter(key, limit=5, window=3600):
+        logger.warning(f"Register rate limit exceeded for IP: {ip}")
+        raise AuthRateLimited(retry_after=3600)
+    
+    return True
+
+
+async def rate_limit_reset_password(
+    request: Request,
+) -> bool:
+    """Rate limit for reset password endpoint."""
+    ip = request.client.host
+    key = f"reset_password_rate_limit:{ip}"
+    
+    if not await rate_limiter(key, limit=5, window=900):
+        logger.warning(f"Reset password rate limit exceeded for IP: {ip}")
+        raise AuthRateLimited(retry_after=900)
+    
+    return True
+
+
+async def rate_limit_change_password(
+    request: Request,
+) -> bool:
+    """Rate limit for change password endpoint."""
+    ip = request.client.host
+    key = f"change_password_rate_limit:{ip}"
+    
+    if not await rate_limiter(key, limit=5, window=900):
+        logger.warning(f"Change password rate limit exceeded for IP: {ip}")
+        raise AuthRateLimited(retry_after=900)
+    
+    return True
+
+
+async def _extract_email(request: Request) -> Optional[str]:
+    """Best-effort email extraction from the request body for per-email rate limits."""
+    try:
+        body = await request.json()
+        email = (body or {}).get("email")
+        return str(email).strip().lower() if email else None
+    except Exception:
+        return None
+
+
 async def rate_limit_forgot_password(
     request: Request,
 ) -> bool:
-    """Rate limit for forgot password endpoint."""
+    """Rate limit for forgot password endpoint (per-email + per-IP)."""
     ip = request.client.host
-    key = f"forgot_password_rate_limit:{ip}"
     
-    if not await rate_limiter(key, limit=3, window=3600):
+    if not await rate_limiter(f"forgot_password_rate_limit_ip:{ip}", limit=20, window=3600):
         logger.warning(f"Forgot password rate limit exceeded for IP: {ip}")
         raise AuthRateLimited(retry_after=3600)
+    
+    email = await _extract_email(request)
+    if email and not await rate_limiter(f"forgot_password_rate_limit_email:{email}", limit=5, window=900):
+        logger.warning(f"Forgot password rate limit exceeded for email: {email}")
+        raise AuthRateLimited(retry_after=900)
     
     return True
 
@@ -196,13 +252,17 @@ async def rate_limit_forgot_password(
 async def rate_limit_resend_verification(
     request: Request,
 ) -> bool:
-    """Rate limit for resend verification endpoint."""
+    """Rate limit for resend verification endpoint (per-email + per-IP)."""
     ip = request.client.host
-    key = f"resend_verification_rate_limit:{ip}"
     
-    if not await rate_limiter(key, limit=3, window=3600):
+    if not await rate_limiter(f"resend_verification_rate_limit_ip:{ip}", limit=10, window=3600):
         logger.warning(f"Resend verification rate limit exceeded for IP: {ip}")
         raise AuthRateLimited(retry_after=3600)
+    
+    email = await _extract_email(request)
+    if email and not await rate_limiter(f"resend_verification_rate_limit_email:{email}", limit=3, window=900):
+        logger.warning(f"Resend verification rate limit exceeded for email: {email}")
+        raise AuthRateLimited(retry_after=900)
     
     return True
 

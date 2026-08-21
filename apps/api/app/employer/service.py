@@ -37,6 +37,8 @@ from app.admin.models import (
 from app.admin.audit import record_audit
 from app.auth.models import User
 from app.candidate.models import ApplicationHistory
+from app.notifications.service import create_notification
+from app.notifications.models import NotificationType
 from app.employer.deps import EmployerContext, EmployerError
 from app.employer.schemas import (
     ApplicationOut,
@@ -831,4 +833,22 @@ async def update_application_status(
         request=request,
     )
     await db.flush()
+
+    # Notify the candidate about the status change (same transaction)
+    job_title = app.job.title if app.job else "Vakansiya"
+    status_labels = {
+        "SHORTLISTED": "müsahibəyə namizəd seçildi",
+        "REJECTED": "rədd edildi",
+        "HIRED": "işə qəbul edildi",
+    }
+    await create_notification(
+        db,
+        user_id=app.candidate_id,
+        type=NotificationType.APPLICATION_STATUS,
+        title="Müraciətinizin statusu yeniləndi",
+        message=f"'{job_title}' vakansiyasına müraciətiniz {status_labels.get(new_status, new_status.lower())}.",
+        entity_type="application",
+        entity_id=app.id,
+        action_url="/candidate/applications",
+    )
     return app

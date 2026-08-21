@@ -168,6 +168,34 @@ class SessionPublic(BaseModel):
     revoked: bool
 
 
+class SessionOut(BaseModel):
+    """Session information for the account security page."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    created_at: datetime
+    last_seen_at: datetime
+    expires_at: datetime
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    is_current: bool = False
+
+
+class SessionsListResponse(BaseModel):
+    """List of active sessions for the current user."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    sessions: list[SessionOut]
+
+
+class SessionRevokeResponse(BaseModel):
+    """Response after revoking a session."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    success: bool = True
+    revoked_current: bool = False
+
+
 class CurrentSessionResponse(BaseModel):
     """Response for current session information."""
     model_config = ConfigDict(from_attributes=True)

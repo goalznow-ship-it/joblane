@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Request, Response, status, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
+from uuid import UUID
 import logging
 
 from app.core.database import get_db
@@ -38,11 +39,21 @@ from app.auth.dependencies import (
     rate_limit_login,
     rate_limit_forgot_password,
     rate_limit_resend_verification,
+    rate_limit_register,
+    rate_limit_reset_password,
+    rate_limit_change_password,
     set_csrf_cookie,
     clear_csrf_cookie,
 )
 from app.auth.security import generate_csrf_token
+from app.auth.schemas import (
+    SessionsListResponse,
+    SessionOut,
+    SessionRevokeResponse,
+)
+from app.auth.exceptions import AuthException
 from app.core.config import settings
+from app.admin.audit import record_audit
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +89,7 @@ def clear_session_cookie(response: Response) -> Response:
 @router.post("/register", response_model=RegisterResponse)
 async def register(
     request: RegisterRequest,
+    _: bool = Depends(rate_limit_register),
     db: AsyncSession = Depends(get_db),
 ) -> RegisterResponse:
     """Register a new user."""
@@ -89,10 +101,6 @@ async def register(
             password=request.password,
             onboarding_intent=request.onboarding_intent,
         )
-        
-        # In a real implementation, we would queue an email task here
-        # For now, we just log the token for development
-        logger.info(f"Verification token for {request.email}: {verification_token}")
         
         return RegisterResponse()
     except HTTPException as e:
@@ -141,19 +149,11 @@ async def resend_verification(
     auth_service = AuthService(db)
     
     try:
-        user = await auth_service.resend_verification_email(request.email)
+        await auth_service.resend_verification_email(request.email)
         
-        if not user:
-            # Don't reveal user doesn't exist
-            return ResendVerificationResponse(
-                message="If an account exists for this email, verification instructions will be resent.",
-            )
-        
-        # In a real implementation, we would queue an email task here
-        logger.info(f"Resend verification email for {request.email}")
-        
+        # Always return the generic message to prevent account enumeration
         return ResendVerificationResponse(
-            message="Verification email resent",
+            message="If an account exists for this email, verification instructions will be resent.",
         )
     except HTTPException as e:
         raise e
@@ -278,10 +278,7 @@ async def forgot_password(
     try:
         user = await auth_service.forgot_password(request.email)
         
-        if user:
-            # In a real implementation, we would queue an email task here
-            logger.info(f"Password reset token for {request.email}")
-        
+        # Always respond with the same generic body (no enumeration)
         return ForgotPasswordResponse()
     except HTTPException as e:
         raise e
@@ -297,6 +294,7 @@ async def forgot_password(
 @router.post("/reset-password", response_model=ResetPasswordResponse)
 async def reset_password(
     request: ResetPasswordRequest,
+    _: bool = Depends(rate_limit_reset_password),
     db: AsyncSession = Depends(get_db),
 ) -> ResetPasswordResponse:
     """Reset password using token."""
@@ -319,6 +317,70 @@ async def reset_password(
         )
 
 
+# Sessions (account security)
+@router.get("/sessions", response_model=SessionsListResponse)
+async def list_sessions(
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[UserSession, Depends(get_current_session)],
+    db: AsyncSession = Depends(get_db),
+) -> SessionsListResponse:
+    """List all active sessions for the current user."""
+    auth_service = AuthService(db)
+    sessions = await auth_service.get_user_sessions(user.id)
+    return SessionsListResponse(
+        sessions=[
+            SessionOut(
+                id=s.id,
+                created_at=s.created_at,
+                last_seen_at=s.last_seen_at,
+                expires_at=s.expires_at,
+                ip_address=s.ip_address,
+                user_agent=s.user_agent,
+                is_current=s.id == session.id,
+            )
+            for s in sessions
+        ]
+    )
+
+
+@router.post("/sessions/{session_id}/revoke", response_model=SessionRevokeResponse)
+async def revoke_session(
+    session_id: UUID,
+    response: Response,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[UserSession, Depends(get_current_session)],
+    _: bool = Depends(csrf_protection),
+    db: AsyncSession = Depends(get_db),
+) -> SessionRevokeResponse:
+    """Revoke a single session (current user only)."""
+    auth_service = AuthService(db)
+    sessions = await auth_service.get_user_sessions(user.id)
+    target = next((s for s in sessions if s.id == session_id), None)
+    if not target:
+        raise AuthException(
+            detail="Session not found",
+            status_code=404,
+        )
+    
+    await auth_service.repository.revoke_session(target)
+    await record_audit(
+        db,
+        actor=user,
+        action="auth.session_revoked",
+        entity_type="user_session",
+        entity_id=target.id,
+        after={"revoked": True},
+    )
+    logger.info(f"Session {target.id} revoked by user {user.id}")
+    
+    revoked_current = target.id == session.id
+    if revoked_current:
+        response = clear_session_cookie(response)
+        response = clear_csrf_cookie(response)
+    
+    return SessionRevokeResponse(revoked_current=revoked_current)
+
+
 # Account router
 account_router = APIRouter(prefix="/api/v1/account", tags=["account"])
 
@@ -327,7 +389,9 @@ account_router = APIRouter(prefix="/api/v1/account", tags=["account"])
 async def change_password(
     request: ChangePasswordRequest,
     user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[UserSession, Depends(get_current_session)],
     _: bool = Depends(csrf_protection),
+    _rl: bool = Depends(rate_limit_change_password),
     db: AsyncSession = Depends(get_db),
 ) -> ChangePasswordResponse:
     """Change password for authenticated user."""
@@ -338,6 +402,7 @@ async def change_password(
             user=user,
             current_password=request.current_password,
             new_password=request.new_password,
+            current_session=session,
         )
         
         return ChangePasswordResponse()

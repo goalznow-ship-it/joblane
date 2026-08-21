@@ -616,6 +616,64 @@ export interface PublicMe {
 }
 
 export const authApi = {
+  async register(email: string, password: string, onboardingIntent?: string): Promise<{ message: string; email_verified: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        ...(onboardingIntent ? { onboarding_intent: onboardingIntent } : {}),
+      }),
+      credentials: "include",
+    })
+    if (!res.ok) {
+      let detail: unknown = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        detail = body.detail ?? body.message ?? detail
+      } catch {}
+      throw new ApiError(res.status, detail)
+    }
+    return res.json()
+  },
+
+  async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/verify-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+      credentials: "include",
+    })
+    if (!res.ok) {
+      let detail: unknown = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        detail = body.detail ?? body.message ?? detail
+      } catch {}
+      throw new ApiError(res.status, detail)
+    }
+    return res.json()
+  },
+
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/resend-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+      credentials: "include",
+    })
+    if (!res.ok) {
+      let detail: unknown = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        detail = body.detail ?? body.message ?? detail
+      } catch {}
+      throw new ApiError(res.status, detail)
+    }
+    return res.json()
+  },
+
   async login(email: string, password: string): Promise<void> {
     const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
       method: "POST",
@@ -661,5 +719,155 @@ export const authApi = {
       }
       throw new ApiError(res.status, detail)
     }
+  },
+
+  async logoutAll(): Promise<void> {
+    const headers: Record<string, string> = {}
+    const token = getCsrfToken()
+    if (token) headers["X-CSRF-Token"] = token
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/logout-all`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+    })
+    if (!res.ok) {
+      let detail: unknown = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        detail = body.detail ?? body.message ?? detail
+      } catch {}
+      throw new ApiError(res.status, detail)
+    }
+  },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+      credentials: "include",
+    })
+    if (!res.ok) {
+      let detail: unknown = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        detail = body.detail ?? body.message ?? detail
+      } catch {}
+      throw new ApiError(res.status, detail)
+    }
+    return res.json()
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, new_password: newPassword }),
+      credentials: "include",
+    })
+    if (!res.ok) {
+      let detail: unknown = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        detail = body.detail ?? body.message ?? detail
+      } catch {}
+      throw new ApiError(res.status, detail)
+    }
+    return res.json()
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    const token = getCsrfToken()
+    if (token) headers["X-CSRF-Token"] = token
+    const res = await fetch(`${API_BASE_URL}/api/v1/account/change-password`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      credentials: "include",
+    })
+    if (!res.ok) {
+      let detail: unknown = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        detail = body.detail ?? body.message ?? detail
+      } catch {}
+      throw new ApiError(res.status, detail)
+    }
+    return res.json()
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Notification API
+// ---------------------------------------------------------------------------
+
+export interface Notification {
+  id: string
+  type: string
+  title: string
+  message: string | null
+  entity_type: string | null
+  entity_id: string | null
+  action_url: string | null
+  metadata: Record<string, unknown> | null
+  read_at: string | null
+  created_at: string
+  is_read: boolean
+}
+
+export interface NotificationListResponse {
+  items: Notification[]
+  total: number
+  unread_count: number
+  page: number
+  page_size: number
+}
+
+export const notificationApi = {
+  async list(page: number = 1, pageSize: number = 20): Promise<NotificationListResponse> {
+    const res = await fetch(
+      `${API_BASE_URL}/api/v1/notifications?page=${page}&page_size=${pageSize}`,
+      { credentials: "include" }
+    )
+    if (res.status === 401) throw new ApiError(401, "Not authenticated")
+    if (!res.ok) throw new ApiError(res.status, "Failed to fetch notifications")
+    return res.json()
+  },
+
+  async unreadCount(): Promise<number> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/notifications/unread-count`, {
+      credentials: "include",
+    })
+    if (res.status === 401) return 0
+    if (!res.ok) return 0
+    const body = await res.json()
+    return body.unread_count
+  },
+
+  async markRead(id: string): Promise<{ success: boolean; unread_count: number }> {
+    const headers: Record<string, string> = {}
+    const token = getCsrfToken()
+    if (token) headers["X-CSRF-Token"] = token
+    const res = await fetch(`${API_BASE_URL}/api/v1/notifications/${id}/read`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+    })
+    if (!res.ok) throw new ApiError(res.status, "Failed to mark notification as read")
+    return res.json()
+  },
+
+  async markAllRead(): Promise<{ success: boolean; unread_count: number }> {
+    const headers: Record<string, string> = {}
+    const token = getCsrfToken()
+    if (token) headers["X-CSRF-Token"] = token
+    const res = await fetch(`${API_BASE_URL}/api/v1/notifications/read-all`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+    })
+    if (!res.ok) throw new ApiError(res.status, "Failed to mark all notifications as read")
+    return res.json()
   },
 }

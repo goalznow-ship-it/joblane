@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Lock, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { authApi } from "@/lib/api"
 
 function ResetPasswordContent() {
   const router = useRouter()
@@ -60,16 +61,24 @@ function ResetPasswordContent() {
     setError("")
 
     if (!validateForm()) return
+    if (!token) return
 
     setLoading(true)
 
     try {
-      // In real implementation, this would call the backend auth API
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
+      await authApi.resetPassword(token, password)
       setSuccess(true)
-    } catch (err) {
-      setError("Şifrə sıfırlama uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+    } catch (err: unknown) {
+      if (err instanceof Error && "status" in err) {
+        const apiErr = err as { status: number; message: string }
+        if (apiErr.status === 400) {
+          setError("Token keçərsizdir, müddəti bitib və ya artıq istifadə olunub.")
+        } else {
+          setError(apiErr.message || "Şifrə sıfırlama uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+        }
+      } else {
+        setError("Şifrə sıfırlama uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+      }
     } finally {
       setLoading(false)
     }
@@ -132,17 +141,24 @@ function ResetPasswordContent() {
     setError("")
 
     if (!validateForm()) return
+    if (!token) return
 
     setLoading(true)
 
     try {
-      // In real implementation, this would call the backend auth API
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      // Mock successful reset
+      await authApi.resetPassword(token, password)
       setSuccess(true)
-    } catch (err) {
-      setError("Şifrə sıfırlama uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+    } catch (err: unknown) {
+      if (err instanceof Error && "status" in err) {
+        const apiErr = err as { status: number; message: string }
+        if (apiErr.status === 400) {
+          setError("Token keçərsizdir, müddəti bitib və ya artıq istifadə olunub.")
+        } else {
+          setError(apiErr.message || "Şifrə sıfırlama uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+        }
+      } else {
+        setError("Şifrə sıfırlama uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+      }
     } finally {
       setLoading(false)
     }

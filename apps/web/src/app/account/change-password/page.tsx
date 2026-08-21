@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Lock, Loader2, Eye, EyeOff, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { authApi } from "@/lib/api"
 
 export default function ChangePasswordPage() {
   const router = useRouter()
@@ -60,12 +61,19 @@ export default function ChangePasswordPage() {
     setLoading(true)
 
     try {
-      // In real implementation, this would call the backend auth API
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
+      await authApi.changePassword(currentPassword, newPassword)
       router.push("/auth/login?password_changed=true")
-    } catch (err) {
-      setError("Şifrə dəyişmə uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+    } catch (err: unknown) {
+      if (err instanceof Error && "status" in err) {
+        const apiErr = err as { status: number; message: string }
+        if (apiErr.status === 401) {
+          setError("Cari şifrəniz yanlışdır.")
+        } else {
+          setError(apiErr.message || "Şifrə dəyişmə uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+        }
+      } else {
+        setError("Şifrə dəyişmə uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+      }
     } finally {
       setLoading(false)
     }
