@@ -7,6 +7,7 @@ import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { authApi } from "@/lib/api"
 
 function VerifyEmailContent() {
   const router = useRouter()
@@ -25,7 +26,7 @@ function VerifyEmailContent() {
       }
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        await authApi.verifyEmail(token)
         setStatus("success")
         setMessage("E-poçtunuz uğurla təsdiqləndi!")
       } catch (err) {

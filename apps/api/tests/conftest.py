@@ -4,7 +4,7 @@ import secrets
 import uuid
 
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://joblane:joblane@localhost:5433/joblane_test"
-os.environ["REDIS_URL"] = "redis://localhost:6380/1"
+os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 
 import pytest
 import pytest_asyncio

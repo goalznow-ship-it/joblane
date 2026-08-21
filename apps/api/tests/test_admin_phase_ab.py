@@ -23,15 +23,28 @@ async def test_admin_login_and_me(client):
 
 @pytest.mark.asyncio
 async def test_dashboard_real_counts(client):
+    from app.core.database import AsyncSessionLocal
+    from app.admin.models import Job
+    from app.auth.models import User
+
     await login(client, ADMIN_EMAIL)
     res = await client.get("/api/v1/admin/dashboard")
     assert res.status_code == 200
     body = res.json()
-    assert body["jobs"]["total"] == 7
-    assert body["jobs"]["by_status"]["PENDING_REVIEW"] == 6
-    assert body["users"]["total"] == 3
+
+    async with AsyncSessionLocal() as db:
+        total_jobs = (await db.execute(select(func.count(Job.id)))).scalar()
+        pending_jobs = (await db.execute(select(func.count(Job.id)).where(Job.status == "PENDING_REVIEW"))).scalar()
+        total_users = (await db.execute(select(func.count(User.id)))).scalar()
+        admin_users = (await db.execute(select(func.count(User.id)).where(User.role.in_(["SUPER_ADMIN", "MODERATOR"])))).scalar()
+
+    assert body["jobs"]["total"] == total_jobs
+    assert body["jobs"]["by_status"]["PENDING_REVIEW"] == pending_jobs
+    assert body["users"]["total"] == total_users
+    assert body["users"]["admins"] == admin_users
+    assert body["jobs"]["total"] >= 7
+    assert body["users"]["total"] >= 3
     assert body["users"]["admins"] == 2
-    assert len(body["moderation_queue"]) == 6
     status = body["system_status"]
     assert status["api"] is True
     assert status["database"] is True

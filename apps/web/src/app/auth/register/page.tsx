@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { activeApi } from "@/lib/api"
+import { authApi } from "@/lib/api"
 import { Mail, Lock, User, Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -63,13 +63,23 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      // In real implementation, this would call the backend auth API
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      // Mock successful registration
-      router.push("/auth/login?registered=true")
-    } catch (err) {
-      setError("Qeydiyyat uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+      const res = await authApi.register(email, password)
+      if (res.email_verified) {
+        router.push("/auth/login?registered=true")
+      } else {
+        router.push("/auth/resend-verification?email=" + encodeURIComponent(email))
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && "status" in err) {
+        const apiErr = err as { status: number; message: string }
+        if (apiErr.status === 409) {
+          setError("Bu e-poçt ünvanı artıq qeydiyyatdan keçib.")
+        } else {
+          setError(apiErr.message || "Qeydiyyat uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+        }
+      } else {
+        setError("Qeydiyyat uğursuz oldu. Zəhmət olmasa yenidən cəhd edin.")
+      }
     } finally {
       setLoading(false)
     }

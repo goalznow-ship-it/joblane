@@ -187,7 +187,10 @@ async def test_notifications_newest_first(client):
 
 
 async def test_job_moderation_notifies_company_members(client):
+    from app.admin.models import Company, JobCategory, Region, JobModerationHistory
+
     candidate = await _user("candidate@joblane.az")
+
     async with AsyncSessionLocal() as db:
         company = (
             await db.execute(
@@ -195,7 +198,6 @@ async def test_job_moderation_notifies_company_members(client):
             )
         ).scalar_one_or_none()
         if company is None:
-            from app.admin.models import Company
             test_corp = (
                 await db.execute(select(Company).where(Company.slug == "test-corp"))
             ).scalar_one()
@@ -207,18 +209,42 @@ async def test_job_moderation_notifies_company_members(client):
                     status=CompanyMembershipStatus.ACTIVE,
                 )
             )
-            await db.commit()
-
-    async with AsyncSessionLocal() as db:
-        job = (
-            await db.execute(
-                select(Job).where(Job.title == "Pending Job 0")
-            )
+        category = (
+            await db.execute(select(JobCategory).where(JobCategory.slug == "it"))
         ).scalar_one()
+        region = (
+            await db.execute(select(Region).where(Region.slug == "baki"))
+        ).scalar_one()
+        test_corp = (
+            await db.execute(select(Company).where(Company.slug == "test-corp"))
+        ).scalar_one()
+        slug = f"notif-pending-{uuid.uuid4().hex[:8]}"
+        job = Job(
+            company_id=test_corp.id,
+            category_id=category.id,
+            region_id=region.id,
+            title="Notif Pending Job",
+            slug=slug,
+            description="desc",
+            status=JobStatus.PENDING_REVIEW,
+            location="Bakı",
+            employment_type="FULL_TIME",
+            work_mode="ON_SITE",
+            is_premium=False,
+            is_featured=False,
+            is_urgent=False,
+            views=0,
+            applications_count=0,
+            favorites_count=0,
+        )
+        db.add(job)
+        await db.flush()
+        job_id = job.id
+        await db.commit()
 
     csrf = await login(client, MODERATOR_EMAIL)
     res = await client.post(
-        f"/api/v1/admin/jobs/{job.id}/moderation",
+        f"/api/v1/admin/jobs/{job_id}/moderation",
         headers=await csrf_headers(csrf),
         json={"decision": "approve"},
     )
@@ -231,7 +257,7 @@ async def test_job_moderation_notifies_company_members(client):
                 select(Notification).where(
                     Notification.user_id == candidate.id,
                     Notification.type == "JOB_APPROVED",
-                    Notification.entity_id == str(job.id),
+                    Notification.entity_id == str(job_id),
                 )
             )
         ).scalar_one_or_none()
@@ -240,10 +266,11 @@ async def test_job_moderation_notifies_company_members(client):
 
 
 async def test_application_status_change_notifies_candidate(client):
+    from app.admin.models import Company, JobCategory, Region
+
     candidate = await _user("candidate@joblane.az")
 
     async with AsyncSessionLocal() as db:
-        from app.admin.models import Company
         test_corp = (
             await db.execute(select(Company).where(Company.slug == "test-corp"))
         ).scalar_one()
@@ -286,11 +313,34 @@ async def test_application_status_change_notifies_candidate(client):
                     status=CompanyMembershipStatus.ACTIVE,
                 )
             )
-        job = (
-            await db.execute(
-                select(Job).where(Job.title == "Approved Job")
-            )
+
+        category = (
+            await db.execute(select(JobCategory).where(JobCategory.slug == "it"))
         ).scalar_one()
+        region = (
+            await db.execute(select(Region).where(Region.slug == "baki"))
+        ).scalar_one()
+        slug = f"notif-approved-{uuid.uuid4().hex[:8]}"
+        job = Job(
+            company_id=test_corp.id,
+            category_id=category.id,
+            region_id=region.id,
+            title="Notif Approved Job",
+            slug=slug,
+            description="desc",
+            status=JobStatus.APPROVED,
+            location="Bakı",
+            employment_type="FULL_TIME",
+            work_mode="ON_SITE",
+            is_premium=False,
+            is_featured=False,
+            is_urgent=False,
+            views=0,
+            applications_count=0,
+            favorites_count=0,
+        )
+        db.add(job)
+        await db.flush()
         app = Application(
             job_id=job.id,
             candidate_id=candidate.id,

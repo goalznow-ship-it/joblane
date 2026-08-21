@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { authApi } from "@/lib/api"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -37,9 +38,7 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      // In real implementation, this would call the backend auth API
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
+      await authApi.forgotPassword(email)
       setSubmitted(true)
     } catch (err) {
       setError("Xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.")
