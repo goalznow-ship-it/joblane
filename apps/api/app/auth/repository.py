@@ -149,10 +149,12 @@ class AuthRepository:
         logger.info(f"Session revoked: {session.id}")
         return session
     
-    async def revoke_all_sessions(self, user_id: UUID) -> List[UserSession]:
-        """Revoke all sessions for a user."""
+    async def revoke_all_sessions(self, user_id: UUID, exclude_session_id: Optional[UUID] = None) -> List[UserSession]:
+        """Revoke all sessions for a user (optionally keeping one session active)."""
         sessions = await self.get_active_sessions(user_id)
         for session in sessions:
+            if exclude_session_id is not None and session.id == exclude_session_id:
+                continue
             session.revoked_at = func.now()
         await self.session.flush()
         logger.info(f"All sessions revoked for user: {user_id}")
@@ -223,6 +225,19 @@ class AuthRepository:
         )
         deleted_count = result.rowcount
         logger.info(f"Deleted {deleted_count} expired verification tokens")
+        return deleted_count
+
+    async def delete_user_verification_tokens(self, user_id: UUID) -> int:
+        """Delete all unused verification tokens for a user (invalidate previous tokens)."""
+        from sqlalchemy import delete
+        result = await self.session.execute(
+            delete(EmailVerificationToken).where(
+                EmailVerificationToken.user_id == user_id,
+                EmailVerificationToken.used_at.is_(None),
+            )
+        )
+        deleted_count = result.rowcount
+        logger.info(f"Deleted {deleted_count} unused verification tokens for user: {user_id}")
         return deleted_count
     
     # Password reset token operations

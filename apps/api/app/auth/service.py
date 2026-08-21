@@ -29,11 +29,14 @@ from app.auth.exceptions import (
 )
 from app.core.security import verify_password, get_password_hash
 from app.core.config import settings
-from app.core.email_client import (
+from app.email.service import (
     queue_verification_email,
     queue_password_reset_email,
     queue_password_changed_notification,
 )
+from app.notifications.service import create_notification
+from app.notifications.models import NotificationType
+from app.admin.audit import record_audit
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +73,9 @@ class AuthService:
                     status=UserStatus.PENDING_VERIFICATION,
                     deleted_at=None,
                 )
-            # Return existing user with appropriate message
-            if existing_user.status == UserStatus.ACTIVE:
-                raise AuthException(
-                    detail="Account already exists and is active",
-                    status_code=400,
-                )
+            # Never reveal account existence: return generic success for any
+            # pre-existing account (verification email is only sent for
+            # accounts that still need verification).
             logger.warning(f"Registration attempted for existing user: {email}")
             return existing_user, None
         
@@ -101,8 +101,8 @@ class AuthService:
             expires_at=expires_at,
         )
         
-        # Queue verification email
-        await queue_verification_email(email, verification_token)
+        # Queue verification email (same transaction as user creation)
+        await queue_verification_email(self.repository.session, email, verification_token)
         
         logger.info(f"User registered: {email} (status: {user.status})")
         return user, verification_token
@@ -142,6 +142,16 @@ class AuthService:
         # Mark user as verified
         user = await self.repository.mark_email_verified(db_token.user)
         
+        # Audit the verification event
+        await record_audit(
+            self.repository.session,
+            actor=user,
+            action="auth.email_verified",
+            entity_type="user",
+            entity_id=user.id,
+            after={"email_verified": True},
+        )
+        
         logger.info(f"Email verified for user: {user.email}")
         return user
     
@@ -162,8 +172,11 @@ class AuthService:
                 status_code=400,
             )
         
-        # Delete old tokens
+        # Delete expired tokens
         await self.repository.delete_expired_verification_tokens()
+        
+        # Invalidate all previous unused tokens for this user (single active token)
+        await self.repository.delete_user_verification_tokens(user.id)
         
         # Generate new verification token
         verification_token = generate_verification_token()
@@ -176,8 +189,8 @@ class AuthService:
             expires_at=expires_at,
         )
         
-        # Queue verification email
-        await queue_verification_email(email, verification_token)
+        # Queue verification email (same transaction)
+        await queue_verification_email(self.repository.session, email, verification_token)
         
         logger.info(f"Resend verification email queued for: {email}")
         return user
@@ -269,8 +282,8 @@ class AuthService:
                 expires_at=expires_at,
             )
             
-            # Queue password reset email
-            await queue_password_reset_email(email, reset_token)
+            # Queue password reset email (same transaction)
+            await queue_password_reset_email(self.repository.session, email, reset_token)
             
             logger.info(f"Password reset initiated for user: {email}")
         else:
@@ -327,8 +340,26 @@ class AuthService:
         # Revoke all existing sessions
         await self.repository.revoke_all_sessions(user.id)
         
-        # Queue password changed notification
-        await queue_password_changed_notification(user.email)
+        # Queue password changed notification (same transaction)
+        await queue_password_changed_notification(self.repository.session, user.email)
+        
+        # In-app notification + audit trail for this security event
+        await create_notification(
+            self.repository.session,
+            user_id=user.id,
+            type=NotificationType.PASSWORD_RESET,
+            title="Şifrə bərpa edildi",
+            message="Hesabınızın şifrəsi parolun bərpası proseduru ilə dəyişdirildi.",
+            action_url="/account/security",
+        )
+        await record_audit(
+            self.repository.session,
+            actor=user,
+            action="auth.password_reset",
+            entity_type="user",
+            entity_id=user.id,
+            after={"password_reset": True},
+        )
         
         logger.info(f"Password reset for user: {user.email}")
         return user
@@ -338,6 +369,7 @@ class AuthService:
         user: User,
         current_password: str,
         new_password: str,
+        current_session: Optional[UserSession] = None,
     ) -> User:
         """Change password for authenticated user."""
         # Verify current password
@@ -357,11 +389,32 @@ class AuthService:
             password_hash=new_password_hash,
         )
         
-        # Revoke all other sessions
-        await self.repository.revoke_all_sessions(user.id)
+        # Revoke all other sessions (keep the current one signed in)
+        await self.repository.revoke_all_sessions(
+            user.id,
+            exclude_session_id=current_session.id if current_session else None,
+        )
         
-        # Queue password changed notification
-        await queue_password_changed_notification(user.email)
+        # Queue password changed notification (same transaction)
+        await queue_password_changed_notification(self.repository.session, user.email)
+        
+        # In-app notification + audit trail for this security event
+        await create_notification(
+            self.repository.session,
+            user_id=user.id,
+            type=NotificationType.PASSWORD_CHANGED,
+            title="Şifrəniz dəyişdirildi",
+            message="Hesabınızın şifrəsi uğurla dəyişdirildi.",
+            action_url="/account/security",
+        )
+        await record_audit(
+            self.repository.session,
+            actor=user,
+            action="auth.password_changed",
+            entity_type="user",
+            entity_id=user.id,
+            after={"password_changed": True},
+        )
         
         logger.info(f"Password changed for user: {user.email}")
         return user

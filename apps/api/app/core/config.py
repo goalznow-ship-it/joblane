@@ -43,12 +43,20 @@ class Settings(BaseSettings):
     s3_secure: bool = False
 
     # Email
+    mail_enabled: bool = False
     mail_host: str = "mailpit"
     mail_port: int = 1025
     mail_username: Optional[str] = None
     mail_password: Optional[str] = None
     mail_from: str = "no-reply@joblane.local"
     mail_from_name: str = "Joblane"
+    mail_use_tls: bool = False
+    mail_use_ssl: bool = False
+    mail_timeout: int = 10
+    app_public_url: str = "http://localhost:1111"
+    mail_max_attempts: int = 5
+    mail_poll_interval_seconds: int = 5
+    mail_retry_backoff_seconds: int = 30
 
     # AI
     ai_provider: str = "none"
